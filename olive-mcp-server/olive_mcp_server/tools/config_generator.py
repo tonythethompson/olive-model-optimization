@@ -103,10 +103,8 @@ def get_pass_config_template(
     config = {
         "input_model": {
             "type": input_model_type,
-            "config": {
-                "model_path": "<path/to/model>",
-                "task": "text-generation",
-            },
+            "model_path": "<path/to/model>",
+            "task": "text-generation",
         },
         "systems": {
             "local_system": {

@@ -11,16 +11,44 @@ from . import load_integration_recipes
 
 OLIVE_SCHEMA_URL = "https://microsoft.github.io/Olive/schema.json"
 
+# The bundled catalog deliberately retains its historical 0.13-era source
+# representation. Recipes returned by this tool must instead use the current
+# flat input-model form. Only the historical Hugging Face spelling changes;
+# PyTorch/ONNX model-handler names remain unchanged until Olive documents a
+# replacement for them.
+_MODEL_TYPE_ALIASES = {
+    "HuggingfaceModel": "HfModel",
+}
+
+
+def _normalize_input_model(recipe: dict[str, Any]) -> None:
+    """Lift legacy ``input_model.config`` fields into the current flat form."""
+    input_model = recipe.get("input_model")
+    if not isinstance(input_model, dict):
+        return
+
+    legacy_config = input_model.pop("config", None)
+    if isinstance(legacy_config, dict):
+        # Preserve an explicit top-level field if one already exists. This
+        # makes normalization safe for a partly migrated source recipe.
+        for key, value in legacy_config.items():
+            input_model.setdefault(key, value)
+
+    model_type = input_model.get("type")
+    if isinstance(model_type, str):
+        input_model["type"] = _MODEL_TYPE_ALIASES.get(model_type, model_type)
+
 
 def _current_schema_recipe(recipe: dict[str, Any]) -> dict[str, Any]:
     """Normalize legacy catalog recipes to the current Olive schema shape.
 
-    The catalog contains historical recipes written before Olive changed pass
-    entries to arrays of ``RunPassConfig`` objects and data components to
-    ``DataComponentConfig`` objects. Return a deep copy in the current shape
-    so callers never receive the legacy ``params``/``params_config`` format.
+    The catalog remains a historical reference source, but returned recipes
+    are migrated to the current Olive 0.13 model/pass/data shapes. In
+    particular, models use a flat ``input_model`` block, passes are arrays of
+    ``RunPassConfig`` objects, and data components use ``type``/``params``.
     """
     out = deepcopy(recipe)
+    _normalize_input_model(out)
     data_configs = out.get("data_configs")
     if isinstance(data_configs, list):
         for data_config in data_configs:

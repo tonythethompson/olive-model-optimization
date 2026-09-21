@@ -1,7 +1,6 @@
 """Unit tests for Olive MCP tools."""
 
 import pytest
-
 from olive_mcp_server.tools.cli_helper import get_cli_command
 from olive_mcp_server.tools.compatibility import get_model_compatibility
 from olive_mcp_server.tools.config_generator import get_pass_config_template
@@ -42,7 +41,12 @@ def test_get_pass_config_template_known_pass():
     pass_entries = result["config"]["passes"]["OnnxQuantization"]
     assert isinstance(pass_entries, list) and len(pass_entries) == 1
     assert pass_entries[0]["type"] == "OnnxQuantization"
+    assert "type" not in pass_entries[0]["config"]
     assert pass_entries[0]["config"]["quant_format"] in ("QOperator", "QDQ")
+    input_model = result["config"]["input_model"]
+    assert input_model["type"] == "ONNXModel"
+    assert input_model["model_path"] == "<path/to/model>"
+    assert "config" not in input_model
 
 
 def test_get_pass_config_template_unknown_pass():
@@ -371,3 +375,35 @@ def test_get_integration_recipe_llama3_rocm():
         for entry in entries
     }
     assert "GptqQuantizer" in pass_types
+
+
+def test_pass_template_huggingface_model_is_flat_and_current():
+    result = get_pass_config_template(
+        pass_name="OnnxBlockWiseRtnQuantization",
+        framework="huggingface",
+    )
+
+    assert "error" not in result
+    input_model = result["config"]["input_model"]
+    assert input_model["type"] == "HfModel"
+    assert input_model["model_path"] == "<path/to/model>"
+    assert "config" not in input_model
+
+
+def test_all_detailed_integration_recipes_emit_flat_current_model_blocks():
+    catalog = get_integration_recipe()
+
+    for summary in catalog["recipes"]:
+        detail = get_integration_recipe(recipe_id=summary["id"])
+        recipe = detail["recipe"]
+        input_model = recipe["input_model"]
+
+        assert "config" not in input_model, summary["id"]
+        assert input_model.get("model_path"), summary["id"]
+        assert input_model.get("type") != "HuggingfaceModel", summary["id"]
+
+        for pass_entries in recipe["passes"].values():
+            assert isinstance(pass_entries, list), summary["id"]
+            for pass_entry in pass_entries:
+                assert isinstance(pass_entry.get("type"), str), summary["id"]
+                assert "type" not in pass_entry.get("config", {}), summary["id"]

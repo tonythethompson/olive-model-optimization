@@ -16,7 +16,7 @@ Use these tools during development to validate recipe configurations, check pass
 
 ## Current Olive Schema
 
-Generated pass templates and detailed integration recipes follow the current [Microsoft Olive schema](https://microsoft.github.io/Olive/schema.json). In particular, pass entries use arrays of `{ "type": ..., "config": ... }`, and data components use `{ "type": ..., "params": ... }`.
+Generated pass templates and detailed integration recipes follow the current Olive 0.13 recipe conventions: model settings are flattened under `input_model` (for example, `input_model.model_path`), Hugging Face identifiers use `input_model.type: "HfModel"`, pass entries use arrays of `{ "type": ..., "config": ... }`, and data components use `{ "type": ..., "params": ... }`.
 
 The bundled `passes.json` and compatibility matrix remain available as **historical 0.13.0 reference snapshots** for compatibility and troubleshooting. They are not treated as the latest Olive pass catalog. Tool responses identify this with `catalog_status: "historical_reference"` and expose the authoritative `schema_source` URL.
 
