@@ -4,7 +4,7 @@ from typing import Any
 
 from . import load_passes
 
-OLIVE_SCHEMA_URL = "https://microsoft.github.io/Olive/schema.json"
+OLIVE_SCHEMA_URL = "https://microsoft.github.io/Olive/0.13.0/schema.json"
 
 _TARGET_DEFAULTS = {
     "quality": {
@@ -103,8 +103,10 @@ def get_pass_config_template(
     config = {
         "input_model": {
             "type": input_model_type,
-            "model_path": "<path/to/model>",
-            "task": "text-generation",
+            "config": {
+                "model_path": "<path/to/model>",
+                "task": "text-generation",
+            },
         },
         "systems": {
             "local_system": {

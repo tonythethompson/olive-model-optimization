@@ -132,9 +132,9 @@ The canonical Agent Plugins configuration is the root [`mcp.json`](./mcp.json). 
 
 ## Schema and Knowledge-Base Provenance
 
-The authoritative recipe reference is the [Microsoft Olive schema](https://microsoft.github.io/Olive/schema.json). Generated pass templates and detailed integration recipes use the current Olive 0.13 conventions: `input_model` is flat (`input_model.model_path`, not `input_model.config.model_path`), Hugging Face model IDs use `HfModel`, pass entries are arrays of `{ "type": ..., "config": ... }`, and data components use `{ "type": ..., "params": ... }`.
+The authoritative recipe reference is the [Microsoft Olive 0.13.0 schema](https://microsoft.github.io/Olive/0.13.0/schema.json). It requires `input_model` to contain `type` and `config`, so model settings are nested (for example, `input_model.config.model_path`). Generated Hugging Face templates use `HfModel`; pass entries are arrays of `{ "type": ..., "config": ... }`; and data components use `{ "type": ..., "params": ... }`.
 
-The bundled `passes.json`, compatibility matrix, and raw `integration_recipes.json` are intentionally retained as **historical 0.13.0 reference snapshots** for compatibility guidance and troubleshooting. They are not emitted verbatim: `get_integration_recipe` migrates detailed recipes to the current flat model, pass, and data-component shapes before returning them. They are not proof that every listed pass is available in the latest Olive release. Use the `schema_source`, `catalog_status`, and evidence fields in tool responses to distinguish current recipe output from historical catalog data.
+The bundled `passes.json`, compatibility matrix, and raw `integration_recipes.json` are intentionally retained as **historical 0.13.0 reference snapshots** for compatibility guidance and troubleshooting. They are not emitted verbatim: `get_integration_recipe` normalizes historical handler names and valid pass/data wrappers while preserving the schema-required `input_model.config` envelope. They are not proof that every listed pass is available in the latest Olive release. Use the `schema_source`, `catalog_status`, and evidence fields in tool responses to distinguish current recipe output from historical catalog data.
 
 ## Knowledge Base
 

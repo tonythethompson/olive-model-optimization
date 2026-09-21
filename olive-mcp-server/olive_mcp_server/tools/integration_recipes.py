@@ -9,30 +9,34 @@ from typing import Any
 
 from . import load_integration_recipes
 
-OLIVE_SCHEMA_URL = "https://microsoft.github.io/Olive/schema.json"
+OLIVE_SCHEMA_URL = "https://microsoft.github.io/Olive/0.13.0/schema.json"
 
 # The bundled catalog deliberately retains its historical 0.13-era source
-# representation. Recipes returned by this tool must instead use the current
-# flat input-model form. Only the historical Hugging Face spelling changes;
-# PyTorch/ONNX model-handler names remain unchanged until Olive documents a
-# replacement for them.
+# representation. Recipes returned by this tool use the Olive 0.13 ModelConfig
+# shape: ``type`` plus a required nested ``config`` object. The only historical
+# model-handler spelling we normalize is Hugging Face's.
 _MODEL_TYPE_ALIASES = {
     "HuggingfaceModel": "HfModel",
 }
 
 
 def _normalize_input_model(recipe: dict[str, Any]) -> None:
-    """Lift legacy ``input_model.config`` fields into the current flat form."""
+    """Normalize a historical input model to Olive 0.13 ``ModelConfig``."""
     input_model = recipe.get("input_model")
     if not isinstance(input_model, dict):
         return
 
-    legacy_config = input_model.pop("config", None)
-    if isinstance(legacy_config, dict):
-        # Preserve an explicit top-level field if one already exists. This
-        # makes normalization safe for a partly migrated source recipe.
-        for key, value in legacy_config.items():
-            input_model.setdefault(key, value)
+    model_config = input_model.get("config")
+    if not isinstance(model_config, dict):
+        model_config = {}
+        input_model["config"] = model_config
+
+    # Recover any fields produced by the prior flat-template implementation.
+    # ``type`` and ``config`` belong to ModelConfig; model-specific values such
+    # as model_path and task belong inside the required config object.
+    for key in list(input_model):
+        if key not in {"type", "config"}:
+            model_config.setdefault(key, input_model.pop(key))
 
     model_type = input_model.get("type")
     if isinstance(model_type, str):
@@ -43,9 +47,10 @@ def _current_schema_recipe(recipe: dict[str, Any]) -> dict[str, Any]:
     """Normalize legacy catalog recipes to the current Olive schema shape.
 
     The catalog remains a historical reference source, but returned recipes
-    are migrated to the current Olive 0.13 model/pass/data shapes. In
-    particular, models use a flat ``input_model`` block, passes are arrays of
-    ``RunPassConfig`` objects, and data components use ``type``/``params``.
+    are migrated to the validated Olive 0.13 model/pass/data shapes. Models
+    use the required ``input_model.type`` plus ``input_model.config`` form,
+    passes are arrays of ``RunPassConfig`` objects, and data components use
+    ``type``/``params``.
     """
     out = deepcopy(recipe)
     _normalize_input_model(out)

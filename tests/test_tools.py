@@ -37,6 +37,10 @@ def test_get_pass_config_template_known_pass():
     )
     assert "error" not in result
     assert result["pass_name"] == "OnnxQuantization"
+    assert (
+        result["schema_source"]
+        == "https://microsoft.github.io/Olive/0.13.0/schema.json"
+    )
     assert "config" in result
     pass_entries = result["config"]["passes"]["OnnxQuantization"]
     assert isinstance(pass_entries, list) and len(pass_entries) == 1
@@ -45,8 +49,8 @@ def test_get_pass_config_template_known_pass():
     assert pass_entries[0]["config"]["quant_format"] in ("QOperator", "QDQ")
     input_model = result["config"]["input_model"]
     assert input_model["type"] == "ONNXModel"
-    assert input_model["model_path"] == "<path/to/model>"
-    assert "config" not in input_model
+    assert input_model["config"]["model_path"] == "<path/to/model>"
+    assert set(input_model) == {"type", "config"}
 
 
 def test_get_pass_config_template_unknown_pass():
@@ -270,6 +274,10 @@ def test_get_integration_recipe_detail():
     result = get_integration_recipe(recipe_id="resnet50_cpu_ptq")
     assert "error" not in result
     assert result["recipe_id"] == "resnet50_cpu_ptq"
+    assert (
+        result["schema_source"]
+        == "https://microsoft.github.io/Olive/0.13.0/schema.json"
+    )
     assert "recipe" in result
     assert "passes" in result["recipe"]
 
@@ -377,7 +385,7 @@ def test_get_integration_recipe_llama3_rocm():
     assert "GptqQuantizer" in pass_types
 
 
-def test_pass_template_huggingface_model_is_flat_and_current():
+def test_pass_template_huggingface_model_uses_olive_model_config():
     result = get_pass_config_template(
         pass_name="OnnxBlockWiseRtnQuantization",
         framework="huggingface",
@@ -386,11 +394,11 @@ def test_pass_template_huggingface_model_is_flat_and_current():
     assert "error" not in result
     input_model = result["config"]["input_model"]
     assert input_model["type"] == "HfModel"
-    assert input_model["model_path"] == "<path/to/model>"
-    assert "config" not in input_model
+    assert input_model["config"]["model_path"] == "<path/to/model>"
+    assert set(input_model) == {"type", "config"}
 
 
-def test_all_detailed_integration_recipes_emit_flat_current_model_blocks():
+def test_all_detailed_integration_recipes_emit_olive_model_config():
     catalog = get_integration_recipe()
 
     for summary in catalog["recipes"]:
@@ -398,9 +406,9 @@ def test_all_detailed_integration_recipes_emit_flat_current_model_blocks():
         recipe = detail["recipe"]
         input_model = recipe["input_model"]
 
-        assert "config" not in input_model, summary["id"]
-        assert input_model.get("model_path"), summary["id"]
-        assert input_model.get("type") != "HuggingfaceModel", summary["id"]
+        assert set(input_model) == {"type", "config"}, summary["id"]
+        assert input_model["config"].get("model_path"), summary["id"]
+        assert input_model["type"] != "HuggingfaceModel", summary["id"]
 
         for pass_entries in recipe["passes"].values():
             assert isinstance(pass_entries, list), summary["id"]
