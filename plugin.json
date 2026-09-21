@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "olive-model-optimization",
+  "version": "0.1.0",
+  "description": "Configure, validate, and troubleshoot Microsoft Olive optimization workflows for ONNX models across CPU, GPU, and NPU targets.",
+  "author": {
+    "name": "Tony Thompson",
+    "url": "https://github.com/tonythethompson"
+  },
+  "homepage": "https://microsoft.github.io/Olive/",
+  "repository": "https://github.com/tonythethompson/olive-model-optimization",
+  "license": "MIT",
+  "keywords": [
+    "olive",
+    "onnx",
+    "model-optimization",
+    "quantization",
+    "onnxruntime",
+    "hardware-acceleration",
+    "mcp"
+  ]
+}

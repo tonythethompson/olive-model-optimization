@@ -26,4 +26,7 @@ def get_olive_passes(filter: str | None = None) -> dict[str, Any]:  # noqa: A002
         "filter": requested or None,
         "count": len(passes),
         "passes": passes,
+        "catalog_version": "0.13.0",
+        "catalog_status": "historical_reference",
+        "schema_source": "https://microsoft.github.io/Olive/schema.json",
     }

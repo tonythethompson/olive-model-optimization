@@ -3,14 +3,22 @@ name: "olive-model-optimization"
 displayName: "Olive Model Optimization"
 description: "Configure, validate, and troubleshoot Microsoft Olive optimization workflows for ONNX models. Query the pass catalog, generate quantization strategies, check hardware compatibility, and diagnose errors without leaving the editor."
 keywords: ["olive", "onnx", "model-optimization", "quantization", "recipe", "troubleshooting", "hardware", "passes", "onnxruntime"]
-author: "Trackdub Team"
+author: "Tony Thompson"
 ---
+
+> **Format note:** `plugin.json` and the root `mcp.json` are the canonical Agent Plugins submission files. This `POWER.md` is retained as optional legacy Kiro Power documentation for local development.
 
 # Olive Model Optimization Power
 
 This power connects Kiro to the Olive Studio MCP server — a Python FastMCP server with 32 tools covering pass catalog queries, recipe validation, strategy advice, troubleshooting, documentation search, and job lifecycle management.
 
 Use these tools during development to validate recipe configurations, check pass compatibility, troubleshoot optimization errors, and query the knowledge base without leaving the editor.
+
+## Current Olive Schema
+
+Generated pass templates and detailed integration recipes follow the current [Microsoft Olive schema](https://microsoft.github.io/Olive/schema.json). In particular, pass entries use arrays of `{ "type": ..., "config": ... }`, and data components use `{ "type": ..., "params": ... }`.
+
+The bundled `passes.json` and compatibility matrix remain available as **historical 0.13.0 reference snapshots** for compatibility and troubleshooting. They are not treated as the latest Olive pass catalog. Tool responses identify this with `catalog_status: "historical_reference"` and expose the authoritative `schema_source` URL.
 
 ## Overview
 

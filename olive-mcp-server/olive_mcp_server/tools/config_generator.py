@@ -4,6 +4,8 @@ from typing import Any
 
 from . import load_passes
 
+OLIVE_SCHEMA_URL = "https://microsoft.github.io/Olive/schema.json"
+
 _TARGET_DEFAULTS = {
     "quality": {
         "calibration_sampling_size": 300,
@@ -109,14 +111,23 @@ def get_pass_config_template(
         "systems": {
             "local_system": {
                 "type": "LocalSystem",
-                "config": {"accelerators": [{"device": "cpu", "execution_providers": ["CPUExecutionProvider"]}]},
+                "config": {
+                    "accelerators": [
+                        {
+                            "device": "cpu",
+                            "execution_providers": ["CPUExecutionProvider"],
+                        }
+                    ]
+                },
             }
         },
         "passes": {
-            pass_name: {
-                "type": meta["class"],
-                "params": params,
-            }
+            pass_name: [
+                {
+                    "type": pass_name,
+                    "config": params,
+                }
+            ]
         },
         "engine": {
             "search_strategy": False,
@@ -134,5 +145,6 @@ def get_pass_config_template(
         "description": meta.get("description"),
         "required_params": meta.get("required_params", []),
         "gotchas": meta.get("gotchas", []),
+        "schema_source": OLIVE_SCHEMA_URL,
         "config": config,
     }

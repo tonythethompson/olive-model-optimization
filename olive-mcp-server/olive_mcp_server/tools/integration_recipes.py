@@ -4,9 +4,65 @@ Provides ready-to-run Olive recipe templates for common model + hardware
 combinations, plus a filterable catalog view.
 """
 
+from copy import deepcopy
 from typing import Any
 
 from . import load_integration_recipes
+
+OLIVE_SCHEMA_URL = "https://microsoft.github.io/Olive/schema.json"
+
+
+def _current_schema_recipe(recipe: dict[str, Any]) -> dict[str, Any]:
+    """Normalize legacy catalog recipes to the current Olive schema shape.
+
+    The catalog contains historical recipes written before Olive changed pass
+    entries to arrays of ``RunPassConfig`` objects and data components to
+    ``DataComponentConfig`` objects. Return a deep copy in the current shape
+    so callers never receive the legacy ``params``/``params_config`` format.
+    """
+    out = deepcopy(recipe)
+    data_configs = out.get("data_configs")
+    if isinstance(data_configs, list):
+        for data_config in data_configs:
+            if not isinstance(data_config, dict):
+                continue
+            legacy_params = data_config.pop("params_config", None)
+            if legacy_params is not None:
+                component_type = data_config.get("type", "DataContainer")
+                data_config["type"] = "DataContainer"
+                data_config["load_dataset_config"] = {
+                    "type": component_type,
+                    "params": legacy_params,
+                }
+            for component_name in (
+                "load_dataset_config",
+                "pre_process_data_config",
+                "post_process_data_config",
+                "dataloader_config",
+            ):
+                component = data_config.get(component_name)
+                if isinstance(component, dict) and "params" not in component:
+                    data_config[component_name] = {"params": component}
+
+    passes = out.get("passes")
+    if isinstance(passes, dict):
+        normalized: dict[str, list[dict[str, Any]]] = {}
+        for pass_id, pass_config in passes.items():
+            entries = pass_config if isinstance(pass_config, list) else [pass_config]
+            current_entries: list[dict[str, Any]] = []
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                current = dict(entry)
+                if "params" in current and "config" not in current:
+                    current["config"] = current.pop("params")
+                current.setdefault("type", pass_id)
+                current_entries.append(current)
+            normalized[pass_id] = current_entries
+        out["passes"] = normalized
+
+    out["schema_source"] = OLIVE_SCHEMA_URL
+    return out
 
 
 def _matches_filter(value: str, candidates: list[str]) -> bool:
@@ -51,20 +107,28 @@ def get_integration_recipe(
         query = recipe_id.lower()
         for recipe in recipes:
             if recipe["id"].lower() == query:
+                normalized_recipe = _current_schema_recipe(recipe["recipe"])
                 return {
                     "recipe_id": recipe["id"],
                     "name": recipe["name"],
                     "description": recipe["description"],
-                    "recipe": recipe["recipe"],
+                    "recipe": normalized_recipe,
                     "notes": recipe.get("notes", ""),
+                    "schema_source": OLIVE_SCHEMA_URL,
                 }
         return {"error": f"Recipe '{recipe_id}' not found."}
 
     filtered = recipes
     if model_type:
-        filtered = [r for r in filtered if _matches_filter(model_type, r.get("model_type", []))]
+        filtered = [
+            r for r in filtered if _matches_filter(model_type, r.get("model_type", []))
+        ]
     if target_hardware:
-        filtered = [r for r in filtered if _matches_filter(target_hardware, r.get("target_hardware", []))]
+        filtered = [
+            r
+            for r in filtered
+            if _matches_filter(target_hardware, r.get("target_hardware", []))
+        ]
     if source_format:
         query = source_format.lower()
         filtered = [r for r in filtered if r.get("source_format", "").lower() == query]

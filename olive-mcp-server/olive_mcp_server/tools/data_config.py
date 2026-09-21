@@ -59,20 +59,21 @@ def get_data_config_template(
 
     sampling_size = 100 if task == "calibration" else 1000
 
-    # Build a proper Olive data_configs entry
+    # Olive's current schema wraps each data component in a
+    # DataComponentConfig: {"type": ..., "params": {...}}.
     data_config_entry = {
         "name": f"{task}_data",
-        "type": container_type,
-        "load_dataset_config": load_cfg,
-        "pre_process_data_config": pre_process,
+        "type": "DataContainer",
+        "load_dataset_config": {"type": container_type, "params": load_cfg},
+        "pre_process_data_config": {"params": pre_process},
         "dataloader_config": {
-            "batch_size": 1,
-            "drop_last": False,
-            "num_workers": 0,
+            "params": {
+                "batch_size": 1,
+                "drop_last": False,
+                "num_workers": 0,
+            }
         },
-        "post_process_data_config": {
-            "output_cols": ["output"],
-        },
+        "post_process_data_config": {"params": {"output_cols": ["output"]}},
     }
 
     if task == "calibration":

@@ -39,10 +39,10 @@ def test_get_pass_config_template_known_pass():
     assert "error" not in result
     assert result["pass_name"] == "OnnxQuantization"
     assert "config" in result
-    assert result["config"]["passes"]["OnnxQuantization"]["params"]["quant_format"] in (
-        "QOperator",
-        "QDQ",
-    )
+    pass_entries = result["config"]["passes"]["OnnxQuantization"]
+    assert isinstance(pass_entries, list) and len(pass_entries) == 1
+    assert pass_entries[0]["type"] == "OnnxQuantization"
+    assert pass_entries[0]["config"]["quant_format"] in ("QOperator", "QDQ")
 
 
 def test_get_pass_config_template_unknown_pass():
@@ -58,7 +58,10 @@ def test_get_quantization_strategy_llm_nvidia():
         accuracy_threshold="<2% drop",
     )
     assert "error" not in result
-    assert "NVModelOptQuantization" in result["recommended_algorithm"] or "AWQ" in result["recommended_algorithm"]
+    assert (
+        "NVModelOptQuantization" in result["recommended_algorithm"]
+        or "AWQ" in result["recommended_algorithm"]
+    )
     assert result["target_hardware"] == "nvidia"
     assert result["model_type"] == "llm"
     assert "pass_chain" in result
@@ -94,14 +97,18 @@ def test_get_hardware_optimization_guide_unknown():
 
 
 def test_get_pass_chain_valid():
-    result = get_pass_chain(["OnnxConversion", "OnnxModelOptimizer", "OnnxQuantization"])
+    result = get_pass_chain(
+        ["OnnxConversion", "OnnxModelOptimizer", "OnnxQuantization"]
+    )
     assert result["valid"] is True
     assert len(result["errors"]) == 0
     assert result["chain"][0]["name"] == "OnnxConversion"
 
 
 def test_get_pass_chain_invalid_order():
-    result = get_pass_chain(["OnnxQuantization", "OnnxConversion"], source_format="PyTorch")
+    result = get_pass_chain(
+        ["OnnxQuantization", "OnnxConversion"], source_format="PyTorch"
+    )
     assert result["valid"] is False
     assert len(result["errors"]) > 0
 
@@ -147,8 +154,13 @@ def test_get_cli_command():
 def test_get_data_config_template():
     result = get_data_config_template(data_source="huggingface", task="calibration")
     assert len(result["data_configs"]) > 0
-    assert result["data_configs"][0]["type"] == "HuggingFaceContainer"
+    assert result["data_configs"][0]["type"] == "DataContainer"
     assert result["data_configs"][0]["name"] == "calibration_data"
+    assert (
+        result["data_configs"][0]["load_dataset_config"]["type"]
+        == "HuggingFaceContainer"
+    )
+    assert "params" in result["data_configs"][0]["load_dataset_config"]
     assert "sampling" in result["data_configs"][0]
 
 
@@ -196,7 +208,9 @@ def test_search_olive_documentation_with_live_source(monkeypatch: pytest.MonkeyP
 
 
 def test_get_pass_parameters():
-    result = get_pass_parameters(pass_name="OnnxQuantization", parameter_name="quant_format")
+    result = get_pass_parameters(
+        pass_name="OnnxQuantization", parameter_name="quant_format"
+    )
     assert result["parameter_name"] == "quant_format"
     assert "QOperator" in result["documentation"]["enum"]
 
@@ -241,7 +255,11 @@ def test_get_integration_recipe_filter_by_model_type():
 def test_get_integration_recipe_filter_by_target_hardware():
     result = get_integration_recipe(target_hardware="CPU")
     assert result["count"] > 0
-    assert any("CPU" in hardware for r in result["recipes"] for hardware in r["target_hardware"])
+    assert any(
+        "CPU" in hardware
+        for r in result["recipes"]
+        for hardware in r["target_hardware"]
+    )
 
 
 def test_get_integration_recipe_detail():
@@ -258,7 +276,9 @@ def test_get_integration_recipe_not_found():
 
 
 def test_get_model_compatibility_new_model():
-    result = get_model_compatibility(model_name="google/vit-base-patch16-224", framework="PyTorch")
+    result = get_model_compatibility(
+        model_name="google/vit-base-patch16-224", framework="PyTorch"
+    )
     assert result["model"] == "ViT-base"
     assert result["framework_supported"] is True
     assert "Intel Core i9 CPU" in result["hardware_profiles"]
@@ -277,21 +297,33 @@ def test_get_model_compatibility_azure_hardware():
 def test_get_integration_recipe_qnn():
     result = get_integration_recipe(recipe_id="qualcomm_qnn_mobile")
     assert "error" not in result
-    pass_types = {p["type"] for p in result["recipe"]["passes"].values()}
+    pass_types = {
+        entry["type"]
+        for entries in result["recipe"]["passes"].values()
+        for entry in entries
+    }
     assert "QNNConversion" in pass_types
 
 
 def test_get_integration_recipe_azure():
     result = get_integration_recipe(recipe_id="azure_ml_quant")
     assert "error" not in result
-    pass_types = {p["type"] for p in result["recipe"]["passes"].values()}
+    pass_types = {
+        entry["type"]
+        for entries in result["recipe"]["passes"].values()
+        for entry in entries
+    }
     assert "AzureMLQuantization" in pass_types
 
 
 def test_get_integration_recipe_openvino_vision():
     result = get_integration_recipe(recipe_id="openvino_vision")
     assert "error" not in result
-    pass_types = {p["type"] for p in result["recipe"]["passes"].values()}
+    pass_types = {
+        entry["type"]
+        for entries in result["recipe"]["passes"].values()
+        for entry in entries
+    }
     assert "OpenVINOQuantization" in pass_types
 
 
@@ -333,5 +365,9 @@ def test_get_integration_recipe_llama3_rocm():
     assert "error" not in result
     assert result["recipe_id"] == "llama3_rocm_gptq"
     assert "ROCMExecutionProvider" in _recipe_execution_providers(result)
-    pass_types = {p["type"] for p in result["recipe"]["passes"].values()}
+    pass_types = {
+        entry["type"]
+        for entries in result["recipe"]["passes"].values()
+        for entry in entries
+    }
     assert "GptqQuantizer" in pass_types

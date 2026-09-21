@@ -21,7 +21,8 @@ import pytest
 # ---------------------------------------------------------------------------
 
 _ROOT = Path(__file__).resolve().parent.parent
-_KB_DIR = _ROOT / "olive_mcp_server" / "knowledge_base"
+_SERVER_ROOT = _ROOT / "olive-mcp-server"
+_KB_DIR = _SERVER_ROOT / "olive_mcp_server" / "knowledge_base"
 _PROFILES_PATH = _KB_DIR / "hardware_profiles.json"
 _PASSES_PATH = _KB_DIR / "passes.json"
 

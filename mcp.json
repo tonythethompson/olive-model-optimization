@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
     "olive-mcp": {
       "type": "stdio",
@@ -10,9 +11,7 @@
       "env": {
         "OLIVE_MCP_RETRIEVAL_MODE": "auto",
         "PYTHONPATH": "${PLUGIN_ROOT}/olive-mcp-server"
-      },
-      "disabled": false,
-      "disabledTools": []
+      }
     }
   }
 }
