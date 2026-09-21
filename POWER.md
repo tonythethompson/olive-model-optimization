@@ -1,12 +1,12 @@
 ---
-name: "olive-mcp-tools"
-displayName: "Olive MCP Tools"
-description: "Query the Olive pass catalog, validate recipes, troubleshoot optimization errors, and inspect hardware profiles during development via the project's MCP server."
-keywords: ["olive", "onnx", "mcp", "model-optimization", "quantization", "recipe", "troubleshooting", "hardware", "passes"]
+name: "olive-model-optimization"
+displayName: "Olive Model Optimization"
+description: "Configure, validate, and troubleshoot Microsoft Olive optimization workflows for ONNX models. Query the pass catalog, generate quantization strategies, check hardware compatibility, and diagnose errors without leaving the editor."
+keywords: ["olive", "onnx", "model-optimization", "quantization", "recipe", "troubleshooting", "hardware", "passes", "onnxruntime"]
 author: "Trackdub Team"
 ---
 
-# Olive MCP Tools Power
+# Olive Model Optimization Power
 
 This power connects Kiro to the Olive Studio MCP server — a Python FastMCP server with 32 tools covering pass catalog queries, recipe validation, strategy advice, troubleshooting, documentation search, and job lifecycle management.
 
@@ -156,34 +156,7 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 
 ## Configuration
 
-The MCP server is configured in `~/.kiro/powers.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "power-olive-mcp-tools-olive-mcp": {
-      "type": "stdio",
-      "command": "python",
-      "args": ["run.py"],
-      "cwd": "D:\\Dev\\Olive-Studio\\olive-mcp-server",
-      "disabled": false,
-      "disabledTools": []
-    }
-  }
-}
-```
-
-## MCP Config Placeholders
-
-**IMPORTANT:** Before using this power, replace the following placeholders in `mcp.json` with your actual values:
-
-- **`d:/Dev/olive-mcp-powers/olive-mcp-server`**: The absolute path to your olive-mcp-server directory.
-  - **How to set it:**
-    1. Locate your olive-mcp-powers workspace directory
-    2. The server is located at `olive-mcp-server` subdirectory
-    3. Use the full absolute path (e.g., `C:/Users/yourname/projects/olive-mcp-powers/olive-mcp-server`)
-
-**After replacing placeholders, your mcp.json should look like:**
+This power ships an `mcp.json` at the power root that Kiro loads automatically when the power is installed:
 
 ```json
 {
@@ -192,10 +165,10 @@ The MCP server is configured in `~/.kiro/powers.mcp.json`:
       "type": "stdio",
       "command": "python",
       "args": ["run.py"],
-      "cwd": "C:/Users/yourname/projects/olive-mcp-powers/olive-mcp-server",
+      "cwd": "${PLUGIN_ROOT}/olive-mcp-server",
       "env": {
         "OLIVE_MCP_RETRIEVAL_MODE": "auto",
-        "PYTHONPATH": "C:/Users/yourname/projects/olive-mcp-powers/olive-mcp-server"
+        "PYTHONPATH": "${PLUGIN_ROOT}/olive-mcp-server"
       },
       "disabled": false,
       "disabledTools": []
@@ -204,7 +177,7 @@ The MCP server is configured in `~/.kiro/powers.mcp.json`:
 }
 ```
 
-**Note:** For local development, the current configuration uses `d:/Dev/olive-mcp-powers/olive-mcp-server` which works for the development environment. When sharing this power, users should replace with their actual path.
+**No path editing required.** `${PLUGIN_ROOT}` is expanded by Kiro to the installed power directory, so the configuration works as-is on any machine after the Python environment is set up (see Prerequisites).
 
 ---
 
