@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "olive-mcp-server"
+version = "0.5.0"
+description = "MCP server for Microsoft Olive model optimization"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+keywords = ["olive", "onnx", "model-optimization", "mcp", "fastmcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "mcp>=1.0.0,<2",
+    "requests>=2.32.0",
+    "beautifulsoup4>=4.12.0",
+    "sentence-transformers>=3.0.0,<6",
+    "numpy>=1.24.0,<3",
+]
+
+[project.urls]
+Homepage = "https://github.com/kiro-dev/olive-mcp-powers"
+Repository = "https://github.com/kiro-dev/olive-mcp-powers"
+"Bug Tracker" = "https://github.com/kiro-dev/olive-mcp-powers/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "hypothesis>=6.0.0,<7",
+    "ruff>=0.6.0,<1.0.0",
+    # 3.10 lacks stdlib tomllib (3.11+); scripts/check_mcp_pin.py falls back to it.
+    "tomli; python_version < '3.11'",
+]
+# Semantic stack is a core dep today; keep the extra for explicit installs /
+# future slim core splits.
+semantic = [
+    "sentence-transformers>=3.0.0,<6",
+    "numpy>=1.24.0,<3",
+]
+
+[project.scripts]
+olive-mcp = "olive_mcp_server.mcp_server:main"
+olive-mcp-server = "olive_mcp_server.mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["olive_mcp_server*"]
+
+[tool.setuptools.package-data]
+olive_mcp_server = [
+    "knowledge_base/*.json",
+    "knowledge_base/indexes/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+# pycodestyle (E/W) + pyflakes (F) + isort (I) + pyupgrade (UP) + bugbear (B) + simplify (SIM).
+# E501 is enforced; long lines were reflowed. `scripts/expand_kb.py` is exempt
+# (per-file ignore below) because it embeds long prose KB-data string literals.
+select = ["ANN", "E", "W", "F", "I", "UP", "B", "SIM"]
+# ANN401 (Any) excluded: this tool passes around JSON/dicts intentionally.
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+# S106: Suppress "possible hardcoded password" for pass_name keyword argument in tests.
+# ANN: test functions/fixtures legitimately omit annotations.
+"tests/**" = ["S106", "ANN"]
+# scripts are dev tooling; annotations optional there.
+"scripts/**" = ["ANN"]
+# expand_kb.py embeds long prose KB-data string literals; wrapping them across many
+# lines would harm readability (the data is authored as one phrase per entry).
+"scripts/expand_kb.py" = ["E501"]

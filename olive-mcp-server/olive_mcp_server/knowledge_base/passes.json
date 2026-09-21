@@ -1,0 +1,2980 @@
+{
+  "version": "0.13.0",
+  "olive_version": "0.13.0",
+  "last_updated": "2025-07-22",
+  "source": "https://microsoft.github.io/Olive/",
+  "passes": [
+    {
+      "name": "OnnxConversion",
+      "type": "conversion",
+      "class": "olive.passes.onnx.conversion.OnnxConversion",
+      "description": "Convert a PyTorch model to ONNX format.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "target_opset": {
+          "type": "int",
+          "default": 14,
+          "range": "7-21",
+          "description": "ONNX opset version to target."
+        },
+        "use_external_data_format": {
+          "type": "bool",
+          "default": false,
+          "description": "Store weights in external files; required for models >2GB."
+        },
+        "dynamic_axes": {
+          "type": "dict",
+          "default": {},
+          "description": "Map of axis names to dynamic dimensions, e.g. {'input': {0: 'batch'}}."
+        },
+        "do_constant_folding": {
+          "type": "bool",
+          "default": true,
+          "description": "Fold constant nodes during export."
+        },
+        "input_names": {
+          "type": "list[str]",
+          "default": [],
+          "description": "Names for ONNX graph inputs."
+        },
+        "output_names": {
+          "type": "list[str]",
+          "default": [],
+          "description": "Names for ONNX graph outputs."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "CoreMLExecutionProvider"
+      ],
+      "typical_compression": "none (format conversion)",
+      "gotchas": [
+        "Models >2GB require use_external_data_format=True.",
+        "Dynamic shapes must be declared via dynamic_axes; otherwise batch/sequence dims are fixed."
+      ]
+    },
+    {
+      "name": "OnnxQuantization",
+      "type": "quantization",
+      "class": "olive.passes.onnx.quantization.OnnxQuantization",
+      "description": "Quantize an ONNX model to int8 using static or dynamic calibration.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "quant_format": {
+          "type": "str",
+          "default": "QDQ",
+          "enum": [
+            "QOperator",
+            "QDQ"
+          ],
+          "description": "QOperator bakes quantize into ops; QDQ inserts Quantize/Dequantize nodes and is more portable."
+        },
+        "per_channel": {
+          "type": "bool",
+          "default": false,
+          "description": "Per-channel weights improve accuracy but are not supported on all accelerators."
+        },
+        "reduce_range": {
+          "type": "bool",
+          "default": false,
+          "description": "Use 7-bit range for compatibility with older Intel AVX2."
+        },
+        "weight_type": {
+          "type": "str",
+          "default": "QInt8",
+          "enum": [
+            "QInt8",
+            "QUInt8"
+          ],
+          "description": "Data type for quantized weights."
+        },
+        "activation_type": {
+          "type": "str",
+          "default": "QInt8",
+          "enum": [
+            "QInt8",
+            "QUInt8"
+          ],
+          "description": "Data type for quantized activations."
+        },
+        "calibrate_method": {
+          "type": "str",
+          "default": "MinMax",
+          "enum": [
+            "MinMax",
+            "Entropy",
+            "Percentile"
+          ],
+          "description": "Calibration method for static quantization."
+        },
+        "calibration_data_dir": {
+          "type": "str",
+          "default": null,
+          "description": "Path to representative calibration data. Required for static quantization."
+        },
+        "calibration_sampling_size": {
+          "type": "int",
+          "default": 100,
+          "description": "Number of samples to use for calibration."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "typical_compression": "70-80%",
+      "gotchas": [
+        "Static quantization requires representative calibration data.",
+        "QDQ format is slower on CPU but required for many NPUs.",
+        "Per-channel quantization improves CNN accuracy but may not be supported on mobile NPUs."
+      ]
+    },
+    {
+      "name": "OnnxDynamicQuantization",
+      "type": "quantization",
+      "class": "olive.passes.onnx.quantization.OnnxDynamicQuantization",
+      "description": "Dynamic int8 quantization; no calibration data required.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "quant_format": {
+          "type": "str",
+          "default": "QOperator",
+          "enum": [
+            "QOperator",
+            "QDQ"
+          ],
+          "description": "Quantization node format."
+        },
+        "per_channel": {
+          "type": "bool",
+          "default": false,
+          "description": "Per-channel weights."
+        },
+        "reduce_range": {
+          "type": "bool",
+          "default": false,
+          "description": "7-bit range."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CoreMLExecutionProvider"
+      ],
+      "typical_compression": "60-70%",
+      "gotchas": [
+        "No calibration data required, but throughput can be lower than static quantization.",
+        "Dynamic quantization is best for LSTM/Transformer decoders."
+      ]
+    },
+    {
+      "name": "OnnxStaticQuantization",
+      "type": "quantization",
+      "class": "olive.passes.onnx.quantization.OnnxStaticQuantization",
+      "description": "Static int8 quantization with representative calibration data.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [
+        "calibration_data_dir"
+      ],
+      "optional_params": {
+        "quant_format": {
+          "type": "str",
+          "default": "QDQ",
+          "enum": [
+            "QOperator",
+            "QDQ"
+          ]
+        },
+        "per_channel": {
+          "type": "bool",
+          "default": false
+        },
+        "calibrate_method": {
+          "type": "str",
+          "default": "MinMax",
+          "enum": [
+            "MinMax",
+            "Entropy",
+            "Percentile"
+          ]
+        },
+        "calibration_sampling_size": {
+          "type": "int",
+          "default": 100
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "TensorrtExecutionProvider",
+        "CoreMLExecutionProvider",
+        "NNAPIExecutionProvider",
+        "ROCMExecutionProvider",
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "70-80%",
+      "gotchas": [
+        "Calibration data must match inference distribution or accuracy drops.",
+        "Start with 100-300 samples; more does not always help."
+      ]
+    },
+    {
+      "name": "NVModelOptQuantization",
+      "type": "quantization",
+      "class": "olive.passes.nv_model_opt.NVModelOptQuantization",
+      "description": "NVIDIA TensorRT Model Optimizer quantization (AWQ/RTN).",
+      "input_formats": [
+        "torch",
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "algorithm": {
+          "type": "str",
+          "default": "awq",
+          "enum": [
+            "awq",
+            "rtn"
+          ],
+          "description": "AWQ (Activation-aware Weight Quantization) preserves accuracy for LLMs; RTN is faster but lower quality."
+        },
+        "weight_bits": {
+          "type": "int",
+          "default": 4,
+          "enum": [
+            4,
+            8
+          ],
+          "description": "Bit width for weights."
+        },
+        "activation_bits": {
+          "type": "int",
+          "default": 8,
+          "enum": [
+            8,
+            16
+          ],
+          "description": "Bit width for activations."
+        },
+        "calibration_data_dir": {
+          "type": "str",
+          "default": null,
+          "description": "Calibration data directory."
+        },
+        "calibration_iters": {
+          "type": "int",
+          "default": 32,
+          "description": "Number of calibration iterations."
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "typical_compression": "75-85%",
+      "gotchas": [
+        "Requires nvidia-modelopt package.",
+        "AWQ is calibration-light; RTN is calibration-free.",
+        "Best for NVIDIA RTX/TensorRT targets."
+      ]
+    },
+    {
+      "name": "QNNQuantization",
+      "type": "quantization",
+      "class": "olive.passes.qnn.QNNQuantization",
+      "description": "Quantize for Qualcomm QNN execution provider.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "quant_level": {
+          "type": "str",
+          "default": "w8a8",
+          "enum": [
+            "w8a8",
+            "w8a16",
+            "w4a8"
+          ],
+          "description": "Weight x activation quantization level."
+        },
+        "per_channel": {
+          "type": "bool",
+          "default": true,
+          "description": "Qualcomm NPUs require per-channel symmetric quantization for best accuracy."
+        }
+      },
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "65-75%",
+      "gotchas": [
+        "Qualcomm NPU prefers symmetric per-channel quantization.",
+        "Some ops (e.g. LayerNorm) may not be supported on QNN; check whitelist."
+      ]
+    },
+    {
+      "name": "VitisAIQuantization",
+      "type": "quantization",
+      "class": "olive.passes.vitis_ai.VitisAIQuantization",
+      "description": "Xilinx Vitis AI quantization with power-of-2 scales.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [
+        "calibration_data_dir"
+      ],
+      "optional_params": {
+        "quant_level": {
+          "type": "int",
+          "default": 1,
+          "description": "Quantization level."
+        },
+        "calibration_sampling_size": {
+          "type": "int",
+          "default": 128
+        }
+      },
+      "hardware_requirements": [
+        "VitisAIExecutionProvider"
+      ],
+      "typical_compression": "60-75%",
+      "gotchas": [
+        "Power-of-2 scale constraint may reduce accuracy; calibrate carefully."
+      ]
+    },
+    {
+      "name": "IncQuantization",
+      "type": "quantization",
+      "class": "olive.passes.inc_quantization.IncQuantization",
+      "description": "Intel Neural Compressor unified quantization.",
+      "input_formats": [
+        "torch",
+        "onnx"
+      ],
+      "output_formats": [
+        "torch",
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "quant_level": {
+          "type": "int",
+          "default": 1
+        },
+        "calibration_sampling_size": {
+          "type": "int",
+          "default": 100
+        },
+        "reduce_range": {
+          "type": "bool",
+          "default": false
+        },
+        "weight_type": {
+          "type": "str",
+          "default": "int8",
+          "enum": [
+            "int8",
+            "uint8",
+            "int4",
+            "nf4"
+          ]
+        },
+        "activation_type": {
+          "type": "str",
+          "default": "int8"
+        },
+        "scheme": {
+          "type": "str",
+          "default": "sym",
+          "enum": [
+            "sym",
+            "asym"
+          ]
+        },
+        "algorithm": {
+          "type": "str",
+          "default": "minmax",
+          "enum": [
+            "minmax",
+            "kl",
+            "entropy"
+          ]
+        },
+        "per_channel": {
+          "type": "bool",
+          "default": false
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "65-80%",
+      "gotchas": [
+        "Intel NC works best with PyTorch source models.",
+        "NF4 requires Intel NC >= 3.0."
+      ]
+    },
+    {
+      "name": "OnnxModelOptimizer",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.optimizer.OnnxModelOptimizer",
+      "description": "General ONNX graph optimization (constant folding, dead code elimination).",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "graph_optimization_level": {
+          "type": "str",
+          "default": "all",
+          "enum": [
+            "disabled",
+            "basic",
+            "extended",
+            "all"
+          ],
+          "description": "Level of ONNX Runtime graph optimization."
+        },
+        "optimize_model_only": {
+          "type": "bool",
+          "default": true,
+          "description": "Only optimize the ONNX model, do not quantize."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "0-10%",
+      "gotchas": [
+        "Run before quantization for cleaner quantized graph."
+      ]
+    },
+    {
+      "name": "OrtTransformersOptimization",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.transformers_optimization.OrtTransformersOptimization",
+      "description": "ONNX Runtime transformer-specific fusion and optimization.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "num_heads": {
+          "type": "int",
+          "default": null,
+          "description": "Number of attention heads."
+        },
+        "hidden_size": {
+          "type": "int",
+          "default": null,
+          "description": "Hidden dimension size."
+        },
+        "opt_level": {
+          "type": "int",
+          "default": 1,
+          "range": "0-4",
+          "description": "Optimization level."
+        },
+        "execution_provider": {
+          "type": "str",
+          "default": "CPUExecutionProvider"
+        },
+        "min_seq_length": {
+          "type": "int",
+          "default": null
+        },
+        "max_seq_length": {
+          "type": "int",
+          "default": null
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "0-15%",
+      "gotchas": [
+        "Requires correct num_heads and hidden_size for transformer models.",
+        "Set min/max sequence lengths for batch inference."
+      ]
+    },
+    {
+      "name": "OnnxFloatToFloat16",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.float16.OnnxFloatToFloat16",
+      "description": "Cast float32 tensors to float16.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "use_symbolic_shape_infer": {
+          "type": "bool",
+          "default": true
+        },
+        "cast_int_inputs_to_int32": {
+          "type": "bool",
+          "default": true
+        },
+        "keep_io_types": {
+          "type": "bool",
+          "default": false,
+          "description": "Keep inputs/outputs in float32 for numerical stability."
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "typical_compression": "40-50%",
+      "gotchas": [
+        "Can cause accuracy loss in models not trained for FP16.",
+        "Keep I/O types float32 to avoid downstream precision issues."
+      ]
+    },
+    {
+      "name": "IncPruning",
+      "type": "pruning",
+      "class": "olive.passes.inc_pruning.IncPruning",
+      "description": "Intel Neural Compressor magnitude/structured pruning.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "pruning_type": {
+          "type": "str",
+          "default": "magnitude",
+          "enum": [
+            "magnitude",
+            "movement",
+            "iterative"
+          ]
+        },
+        "target_sparsity": {
+          "type": "float",
+          "default": 0.5,
+          "range": "0.0-0.95",
+          "description": "Target fraction of weights to zero out."
+        },
+        "pruning_frequency": {
+          "type": "int",
+          "default": 1
+        },
+        "excluded_op_names": {
+          "type": "list[str]",
+          "default": []
+        },
+        "excluded_op_types": {
+          "type": "list[str]",
+          "default": []
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "40-70%",
+      "gotchas": [
+        "Sparsity must be matched to a sparse-aware execution provider for speedup.",
+        "High sparsity (>70%) usually requires fine-tuning to recover accuracy."
+      ]
+    },
+    {
+      "name": "LoRA",
+      "type": "finetuning",
+      "class": "olive.passes.lora.LoRA",
+      "description": "Low-Rank Adaptation fine-tuning.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "lora_rank": {
+          "type": "int",
+          "default": 8,
+          "range": "1-256",
+          "description": "LoRA rank; higher captures more signal but uses more memory."
+        },
+        "lora_alpha": {
+          "type": "int",
+          "default": 16,
+          "description": "Scaling factor; effective alpha/rank."
+        },
+        "lora_dropout": {
+          "type": "float",
+          "default": 0.05
+        },
+        "target_modules": {
+          "type": "list[str]",
+          "default": [
+            "q_proj",
+            "v_proj"
+          ],
+          "description": "Module names to apply LoRA."
+        },
+        "modules_to_save": {
+          "type": "list[str]",
+          "default": []
+        },
+        "learning_rate": {
+          "type": "float",
+          "default": 0.0001
+        },
+        "num_train_epochs": {
+          "type": "int",
+          "default": 3
+        },
+        "batch_size": {
+          "type": "int",
+          "default": 8
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "CoreMLExecutionProvider"
+      ],
+      "typical_compression": "n/a (adds adapter weights)",
+      "gotchas": [
+        "Base model stays frozen; only low-rank adapters train.",
+        "Target modules vary by model architecture (q_proj/v_proj for Llama, query/key/value for BERT)."
+      ]
+    },
+    {
+      "name": "QLoRA",
+      "type": "finetuning",
+      "class": "olive.passes.qlora.QLoRA",
+      "description": "Quantized LoRA fine-tuning (4-bit base model + LoRA adapters).",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "lora_rank": {
+          "type": "int",
+          "default": 64
+        },
+        "lora_alpha": {
+          "type": "int",
+          "default": 16
+        },
+        "lora_dropout": {
+          "type": "float",
+          "default": 0.1
+        },
+        "bits": {
+          "type": "int",
+          "default": 4,
+          "enum": [
+            4,
+            8
+          ]
+        },
+        "learning_rate": {
+          "type": "float",
+          "default": 0.0002
+        },
+        "num_train_epochs": {
+          "type": "int",
+          "default": 1
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "n/a (reduces train memory)",
+      "gotchas": [
+        "Requires bitsandbytes and a CUDA GPU.",
+        "4-bit base + LoRA is memory-efficient but merging adapters back is non-trivial."
+      ]
+    },
+    {
+      "name": "IncDistillation",
+      "type": "distillation",
+      "class": "olive.passes.inc_distillation.IncDistillation",
+      "description": "Knowledge distillation using Intel Neural Compressor.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [
+        "teacher_model"
+      ],
+      "optional_params": {
+        "criterion_type": {
+          "type": "str",
+          "default": "KL",
+          "enum": [
+            "KL",
+            "L2",
+            "MSE"
+          ]
+        },
+        "temperature": {
+          "type": "float",
+          "default": 3.0,
+          "description": "Softmax temperature for distillation."
+        },
+        "loss_types": {
+          "type": "list[str]",
+          "default": []
+        },
+        "loss_weights": {
+          "type": "list[float]",
+          "default": []
+        },
+        "train_epochs": {
+          "type": "int",
+          "default": 10
+        },
+        "learning_rate": {
+          "type": "float",
+          "default": 1e-5
+        },
+        "batch_size": {
+          "type": "int",
+          "default": 16
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "Calibration can be slow; start with 1-2 epochs to validate pipeline.",
+        "Teacher and student must output compatible logits."
+      ]
+    },
+    {
+      "name": "OrtPerfTuning",
+      "type": "performance_tuning",
+      "class": "olive.passes.ort_perf_tuning.OrtPerfTuning",
+      "description": "ONNX Runtime performance tuning for execution provider settings.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "tuning_type": {
+          "type": "str",
+          "default": "Quantization",
+          "enum": [
+            "Quantization",
+            "Distillation",
+            "Mixed_Precision"
+          ]
+        },
+        "samples_batch_size": {
+          "type": "int",
+          "default": 16
+        },
+        "data_dir": {
+          "type": "str",
+          "default": null
+        },
+        "enable_profiling": {
+          "type": "bool",
+          "default": false
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "typical_compression": "0-20%",
+      "gotchas": [
+        "Profiling can be expensive; use a small sample set."
+      ]
+    },
+    {
+      "name": "IncDynamicQuantization",
+      "type": "quantization",
+      "class": "olive.passes.inc_quantization.IncDynamicQuantization",
+      "description": "Intel Neural Compressor dynamic quantization.",
+      "input_formats": [
+        "torch",
+        "onnx"
+      ],
+      "output_formats": [
+        "torch",
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "weight_type": {
+          "type": "str",
+          "default": "int8",
+          "enum": [
+            "int8",
+            "uint8"
+          ]
+        },
+        "per_channel": {
+          "type": "bool",
+          "default": false
+        },
+        "reduce_range": {
+          "type": "bool",
+          "default": false
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "60-70%",
+      "gotchas": [
+        "No calibration data required; accuracy may lag static quantization."
+      ]
+    },
+    {
+      "name": "IncStaticQuantization",
+      "type": "quantization",
+      "class": "olive.passes.inc_quantization.IncStaticQuantization",
+      "description": "Intel Neural Compressor static quantization.",
+      "input_formats": [
+        "torch",
+        "onnx"
+      ],
+      "output_formats": [
+        "torch",
+        "onnx"
+      ],
+      "required_params": [
+        "calibration_data_dir"
+      ],
+      "optional_params": {
+        "calibration_sampling_size": {
+          "type": "int",
+          "default": 100
+        },
+        "weight_type": {
+          "type": "str",
+          "default": "int8"
+        },
+        "scheme": {
+          "type": "str",
+          "default": "sym",
+          "enum": [
+            "sym",
+            "asym"
+          ]
+        },
+        "per_channel": {
+          "type": "bool",
+          "default": false
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "65-75%",
+      "gotchas": [
+        "Calibration data must be representative of inference distribution."
+      ]
+    },
+    {
+      "name": "OnnxOpVersionConversion",
+      "type": "conversion",
+      "class": "olive.passes.onnx.conversion.OnnxOpVersionConversion",
+      "description": "Convert an ONNX model to a newer opset version.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "target_opset": {
+          "type": "int",
+          "default": 14,
+          "range": "7-21"
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Higher opsets can break compatibility with older execution providers."
+      ]
+    },
+    {
+      "name": "OpenVINOConversion",
+      "type": "conversion",
+      "class": "olive.passes.openvino.OpenVINOConversion",
+      "description": "Convert a PyTorch or ONNX model to OpenVINO IR.",
+      "input_formats": [
+        "torch",
+        "onnx"
+      ],
+      "output_formats": [
+        "openvino"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "input_shapes": {
+          "type": "list[list[int]]",
+          "default": []
+        },
+        "fp16": {
+          "type": "bool",
+          "default": false
+        }
+      },
+      "hardware_requirements": [
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "OpenVINO plugin must be installed separately."
+      ]
+    },
+    {
+      "name": "OpenVINOQuantization",
+      "type": "quantization",
+      "class": "olive.passes.openvino.OpenVINOQuantization",
+      "description": "Post-training quantization for OpenVINO and ONNX models using Intel NNCF.",
+      "input_formats": [
+        "openvino",
+        "onnx"
+      ],
+      "output_formats": [
+        "openvino"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "target_device": {
+          "type": "str",
+          "default": "ANY"
+        },
+        "algorithms": {
+          "type": "list[str]",
+          "default": [
+            "DefaultQuantization"
+          ]
+        }
+      },
+      "hardware_requirements": [
+        "OpenVINOExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "4x-8x",
+      "gotchas": [
+        "Requires openvino and nncf python packages installed."
+      ]
+    },
+    {
+      "name": "OpenVINOIoUpdate",
+      "type": "graph_optimization",
+      "class": "olive.passes.openvino.OpenVINOIoUpdate",
+      "description": "Convert dynamic OpenVINO model to static and update IO names.",
+      "input_formats": [
+        "openvino"
+      ],
+      "output_formats": [
+        "openvino"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "input_shapes": {
+          "type": "dict",
+          "default": {}
+        }
+      },
+      "hardware_requirements": [
+        "OpenVINOExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Updates static shapes for OpenVINO runtime performance."
+      ]
+    },
+    {
+      "name": "OpenVINOQuantizationWithAccuracy",
+      "type": "quantization",
+      "class": "olive.passes.openvino.OpenVINOQuantizationWithAccuracy",
+      "description": "Post-training quantization with accuracy awareness for OpenVINO using Intel NNCF.",
+      "input_formats": [
+        "openvino",
+        "onnx"
+      ],
+      "output_formats": [
+        "openvino"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "OpenVINOExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "4x-8x",
+      "gotchas": [
+        "Requires accuracy dataset and evaluator configured."
+      ]
+    },
+    {
+      "name": "OpenVINOWeightCompression",
+      "type": "quantization",
+      "class": "olive.passes.openvino.OpenVINOWeightCompression",
+      "description": "Weight compression for HuggingFace/ONNX models to OpenVINO using Intel NNCF.",
+      "input_formats": [
+        "torch",
+        "onnx",
+        "openvino"
+      ],
+      "output_formats": [
+        "openvino"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "OpenVINOExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "4x-8x",
+      "gotchas": [
+        "Compresses weights to INT4/INT8 for low-memory LLM inference."
+      ]
+    },
+    {
+      "name": "OpenVINOEncapsulation",
+      "type": "conversion",
+      "class": "olive.passes.openvino.OpenVINOEncapsulation",
+      "description": "Generates an ONNX model that encapsulates an OpenVINO IR model.",
+      "input_formats": [
+        "openvino"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Allows ONNX Runtime to execute OpenVINO subgraphs via OpenVINOExecutionProvider."
+      ]
+    },
+    {
+      "name": "OpenVINOOptimumConversion",
+      "type": "conversion",
+      "class": "olive.passes.openvino.OpenVINOOptimumConversion",
+      "description": "Convert HuggingFace model to OpenVINO via Optimum Intel, with optional weight compression.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "openvino"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "Requires optimum[openvino] python package."
+      ]
+    },
+    {
+      "name": "SNPEConversion",
+      "type": "conversion",
+      "class": "olive.passes.snpe.SNPEConversion",
+      "description": "Convert to Qualcomm SNPE DLC format.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "snpe"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "input_list": {
+          "type": "str",
+          "default": ""
+        }
+      },
+      "hardware_requirements": [
+        "SNPEExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "SNPE is Qualcomm's legacy runtime; prefer QNN for newer platforms."
+      ]
+    },
+    {
+      "name": "TensorFlowConversion",
+      "type": "conversion",
+      "class": "olive.passes.tensorflow.TensorFlowConversion",
+      "description": "Convert a model to TensorFlow SavedModel.",
+      "input_formats": [
+        "onnx",
+        "torch"
+      ],
+      "output_formats": [
+        "tf"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "TensorflowLiteExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Not all ONNX ops map cleanly to TensorFlow."
+      ]
+    },
+    {
+      "name": "OrtMixedPrecision",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.mixed_precision.OrtMixedPrecision",
+      "description": "Mixed int8/float32 precision conversion.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "op_block_list": {
+          "type": "list[str]",
+          "default": []
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "30-40%",
+      "gotchas": [
+        "op_block_list prevents specific ops from being cast to FP16."
+      ]
+    },
+    {
+      "name": "QNNPreprocess",
+      "type": "graph_optimization",
+      "class": "olive.passes.qnn.QNNPreprocess",
+      "description": "Preprocess ONNX graph for Qualcomm QNN.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "0-5%",
+      "gotchas": [
+        "May insert quantize/dequantize nodes and replace unsupported ops."
+      ]
+    },
+    {
+      "name": "IncSparsityFineTuning",
+      "type": "pruning",
+      "class": "olive.passes.inc_pruning.IncSparsityFineTuning",
+      "description": "Fine-tune after Intel Neural Compressor pruning.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "learning_rate": {
+          "type": "float",
+          "default": 1e-5
+        },
+        "train_epochs": {
+          "type": "int",
+          "default": 3
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "Recovery accuracy depends on sparsity ratio."
+      ]
+    },
+    {
+      "name": "SparsityFineTuning",
+      "type": "pruning",
+      "class": "olive.passes.sparsity.SparsityFineTuning",
+      "description": "General sparsity fine-tuning pass.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "target_sparsity": {
+          "type": "float",
+          "default": 0.5,
+          "range": "0.0-0.95"
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "40-60%",
+      "gotchas": [
+        "Sparse speedup requires sparse-aware execution provider."
+      ]
+    },
+    {
+      "name": "DistillationPass",
+      "type": "distillation",
+      "class": "olive.passes.distillation.DistillationPass",
+      "description": "General knowledge distillation pass.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [
+        "teacher_model"
+      ],
+      "optional_params": {
+        "temperature": {
+          "type": "float",
+          "default": 3.0
+        },
+        "loss_weights": {
+          "type": "list[float]",
+          "default": [
+            1.0,
+            0.5
+          ]
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "Teacher and student logits must be compatible."
+      ]
+    },
+    {
+      "name": "MultiLoRA",
+      "type": "finetuning",
+      "class": "olive.passes.lora.MultiLoRA",
+      "description": "Multiple LoRA adapters for ONNX Runtime (experimental).",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "lora_rank": {
+          "type": "int",
+          "default": 8
+        },
+        "lora_alpha": {
+          "type": "int",
+          "default": 16
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "n/a",
+      "gotchas": [
+        "Experimental; requires careful adapter routing."
+      ]
+    },
+    {
+      "name": "ExtractLoRA",
+      "type": "finetuning",
+      "class": "olive.passes.lora.ExtractLoRA",
+      "description": "Extract LoRA weights to separate adapter files.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "n/a",
+      "gotchas": [
+        "Extracted adapters must be merged or loaded separately."
+      ]
+    },
+    {
+      "name": "GenerateAdapterWeights",
+      "type": "finetuning",
+      "class": "olive.passes.lora.GenerateAdapterWeights",
+      "description": "Generate adapter weight files for serving.",
+      "input_formats": [
+        "torch"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "adapter_path": {
+          "type": "str",
+          "default": ""
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "n/a",
+      "gotchas": [
+        "Used for multi-adapter serving patterns."
+      ]
+    },
+    {
+      "name": "FinetuningPass",
+      "type": "finetuning",
+      "class": "olive.passes.finetuning.FinetuningPass",
+      "description": "General PyTorch fine-tuning pass.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "learning_rate": {
+          "type": "float",
+          "default": 1e-5
+        },
+        "num_train_epochs": {
+          "type": "int",
+          "default": 3
+        },
+        "batch_size": {
+          "type": "int",
+          "default": 8
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "n/a",
+      "gotchas": [
+        "Full fine-tuning is memory intensive."
+      ]
+    },
+    {
+      "name": "HuggingFaceFineTuning",
+      "type": "finetuning",
+      "class": "olive.passes.finetuning.HuggingFaceFineTuning",
+      "description": "Hugging Face Trainer integration for fine-tuning.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "per_device_train_batch_size": {
+          "type": "int",
+          "default": 8
+        },
+        "num_train_epochs": {
+          "type": "int",
+          "default": 3
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "n/a",
+      "gotchas": [
+        "Requires transformers, datasets, and accelerate."
+      ]
+    },
+    {
+      "name": "ModelOptOptimizer",
+      "type": "performance_tuning",
+      "class": "olive.passes.nv_model_opt.ModelOptOptimizer",
+      "description": "NVIDIA Model Optimizer integration.",
+      "input_formats": [
+        "torch",
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "mode": {
+          "type": "str",
+          "default": "quantize",
+          "enum": [
+            "quantize",
+            "prune",
+            "export"
+          ]
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "typical_compression": "70-85%",
+      "gotchas": [
+        "Requires nvidia-modelopt package."
+      ]
+    },
+    {
+      "name": "BatchSizeOptimization",
+      "type": "performance_tuning",
+      "class": "olive.passes.perf_tuning.BatchSizeOptimization",
+      "description": "Search for optimal batch size.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "min_batch_size": {
+          "type": "int",
+          "default": 1
+        },
+        "max_batch_size": {
+          "type": "int",
+          "default": 64
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "0%",
+      "gotchas": [
+        "Optimal batch depends on model size and memory."
+      ]
+    },
+    {
+      "name": "OnnxGraphCapture",
+      "type": "performance_tuning",
+      "class": "olive.passes.onnx.graph_capture.OnnxGraphCapture",
+      "description": "Capture ONNX computation graph for analysis.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "input_names": {
+          "type": "list[str]",
+          "default": []
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "0%",
+      "gotchas": [
+        "Used for debugging and graph inspection."
+      ]
+    },
+    {
+      "name": "QNNConversion",
+      "type": "conversion",
+      "class": "olive.passes.qnn.QNNConversion",
+      "description": "Convert ONNX model to QNN context binary.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "qnn"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "qnn_sdk_root": {
+          "type": "str",
+          "default": ""
+        }
+      },
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "Requires Qualcomm QNN SDK."
+      ]
+    },
+    {
+      "name": "AzureMLQuantization",
+      "type": "quantization",
+      "class": "olive.passes.azureml.AzureMLQuantization",
+      "description": "Quantization pass running on Azure ML compute.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [
+        "compute_target"
+      ],
+      "optional_params": {
+        "conda_environment": {
+          "type": "str",
+          "default": ""
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "70-80%",
+      "gotchas": [
+        "Requires Azure ML workspace and Olive AzureML extension."
+      ]
+    },
+    {
+      "name": "OptimumQuantization",
+      "type": "quantization",
+      "class": "olive.passes.optimum.OptimumQuantization",
+      "description": "Hugging Face Optimum quantization pass.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "quantization_approach": {
+          "type": "str",
+          "default": "dynamic",
+          "enum": [
+            "dynamic",
+            "static"
+          ]
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "65-75%",
+      "gotchas": [
+        "Optimum path is convenient but less tunable than Olive native passes."
+      ]
+    },
+    {
+      "name": "OptimumConversion",
+      "type": "conversion",
+      "class": "olive.passes.optimum.OptimumConversion",
+      "description": "Hugging Face Optimum ONNX conversion.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "opset": {
+          "type": "int",
+          "default": 14
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Uses Optimum exporters; check supported architectures."
+      ]
+    },
+    {
+      "name": "OptimumGraphOptimization",
+      "type": "graph_optimization",
+      "class": "olive.passes.optimum.OptimumGraphOptimization",
+      "description": "Hugging Face Optimum ONNX graph optimizations.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "optimization_level": {
+          "type": "int",
+          "default": 1,
+          "range": "0-99"
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "0-10%",
+      "gotchas": [
+        "Wraps Optimum optimizer; less control than native Olive passes."
+      ]
+    },
+    {
+      "name": "AutoAWQQuantizer",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.AutoAWQQuantizer",
+      "description": "AWQ (Activation-aware Weight Quantization) for HuggingFace PyTorch models.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "bits": {
+          "type": "int",
+          "default": 4
+        },
+        "group_size": {
+          "type": "int",
+          "default": 128
+        },
+        "zero_point": {
+          "type": "bool",
+          "default": true
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "ROCMExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Requires GPU with CUDA/ROCm."
+      ]
+    },
+    {
+      "name": "GptqQuantizer",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.GptqQuantizer",
+      "description": "GPTQ post-training quantization for PyTorch transformer models.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "bits": {
+          "type": "int",
+          "default": 4
+        },
+        "group_size": {
+          "type": "int",
+          "default": 128
+        },
+        "desc_act": {
+          "type": "bool",
+          "default": false
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "ROCMExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Requires calibration dataset."
+      ]
+    },
+    {
+      "name": "Gptq",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.Gptq",
+      "description": "High-level GPTQ quantization pass for HuggingFace models.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "High-level wrapper around auto-gptq."
+      ]
+    },
+    {
+      "name": "OnnxHqqQuantization",
+      "type": "quantization",
+      "class": "olive.passes.onnx.OnnxHqqQuantization",
+      "description": "Half-Quadratic Quantization (HQQ) for ONNX and HuggingFace models.",
+      "input_formats": [
+        "onnx",
+        "hf"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "precision": {
+          "type": "str",
+          "default": "int4"
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "CoreMLExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Fast quantization without calibration data requirement."
+      ]
+    },
+    {
+      "name": "OnnxBlockWiseRtnQuantization",
+      "type": "quantization",
+      "class": "olive.passes.onnx.OnnxBlockWiseRtnQuantization",
+      "description": "Block-wise Round-To-Nearest (RTN) quantization for ONNX models.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "bits": {
+          "type": "int",
+          "default": 4
+        },
+        "block_size": {
+          "type": "int",
+          "default": 128
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "CoreMLExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Fast RTN quantization for LLM weights."
+      ]
+    },
+    {
+      "name": "Rtn",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.Rtn",
+      "description": "High-level RTN quantization for PyTorch transformer models.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Basic RTN quantization without calibration."
+      ]
+    },
+    {
+      "name": "QATQuantizer",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.QATQuantizer",
+      "description": "Quantization Aware Training (QAT) pass.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "precision": {
+          "type": "str",
+          "default": "int8"
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "CoreMLExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Requires training dataset and fine-tuning epochs."
+      ]
+    },
+    {
+      "name": "SpinQuant",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.SpinQuant",
+      "description": "SpinQuant rotation-based quantization for LLMs.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "rotate_mode": {
+          "type": "str",
+          "default": "hadamard"
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Optimizes outlier features via random rotation matrices."
+      ]
+    },
+    {
+      "name": "QuaRot",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.QuaRot",
+      "description": "QuaRot outlier-free quantization for LLMs.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "rotate_mode": {
+          "type": "str",
+          "default": "hadamard"
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Eliminates activation outliers using Hadamard rotations."
+      ]
+    },
+    {
+      "name": "AimetQuantization",
+      "type": "quantization",
+      "class": "olive.passes.qnn.AimetQuantization",
+      "description": "Qualcomm AIMET quantization for Snapdragon / QNN execution targets.",
+      "input_formats": [
+        "torch",
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "4x",
+      "gotchas": [
+        "Requires Qualcomm AIMET toolkit."
+      ]
+    },
+    {
+      "name": "QNNModelLibGenerator",
+      "type": "conversion",
+      "class": "olive.passes.qnn.QNNModelLibGenerator",
+      "description": "Compile QNN C++ model source into QNN model library (.so/.dll).",
+      "input_formats": [
+        "qnn"
+      ],
+      "output_formats": [
+        "qnn"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Requires QNN SDK compiler toolchain."
+      ]
+    },
+    {
+      "name": "QNNContextBinaryGenerator",
+      "type": "conversion",
+      "class": "olive.passes.qnn.QNNContextBinaryGenerator",
+      "description": "Generate QNN context binary from model library for a target NPU.",
+      "input_formats": [
+        "qnn",
+        "onnx"
+      ],
+      "output_formats": [
+        "qnn"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "backend": {
+          "type": "str",
+          "default": "libQnnHtp.so"
+        }
+      },
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Target NPU driver required for context generation."
+      ]
+    },
+    {
+      "name": "NVModelOptGraphSurgery",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.NVModelOptGraphSurgery",
+      "description": "NVIDIA ModelOpt graph surgeries (replace-gqa, add-cross-kv, convert-bf16).",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "surgeries": {
+          "type": "list[str]",
+          "default": [
+            "replace-gqa"
+          ]
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Optimizes ONNX graphs for NVIDIA TensorRT and ModelOpt."
+      ]
+    },
+    {
+      "name": "Nvfp4Quantizer",
+      "type": "quantization",
+      "class": "olive.passes.onnx.Nvfp4Quantizer",
+      "description": "NVIDIA FP4 4-bit floating point quantization for Blackwell GPUs.",
+      "input_formats": [
+        "onnx",
+        "hf"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "typical_compression": "8x",
+      "gotchas": [
+        "Requires Blackwell / modern NVIDIA GPU architecture."
+      ]
+    },
+    {
+      "name": "Prune",
+      "type": "pruning",
+      "class": "olive.passes.pytorch.Prune",
+      "description": "Magnitude-based unstructured and structured pruning.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "target_sparsity": {
+          "type": "float",
+          "default": 0.5
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "2x",
+      "gotchas": [
+        "Requires fine-tuning to recover accuracy after pruning."
+      ]
+    },
+    {
+      "name": "SparseGPT",
+      "type": "pruning",
+      "class": "olive.passes.pytorch.SparseGPT",
+      "description": "SparseGPT 2:4 structured and unstructured 50% pruning for LLMs.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "sparsity_ratio": {
+          "type": "float",
+          "default": 0.5
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "2x",
+      "gotchas": [
+        "Fast 1-shot pruning without retraining."
+      ]
+    },
+    {
+      "name": "Wanda",
+      "type": "pruning",
+      "class": "olive.passes.pytorch.Wanda",
+      "description": "Wanda (Pruning by Weights and Activations) for LLMs.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "sparsity_ratio": {
+          "type": "float",
+          "default": 0.5
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "2x",
+      "gotchas": [
+        "Prunes weights based on product of weight magnitude and input activation norm."
+      ]
+    },
+    {
+      "name": "SliceGPT",
+      "type": "pruning",
+      "class": "olive.passes.pytorch.SliceGPT",
+      "description": "SliceGPT post-training sparsification via orthogonal transformations.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "sparsity_ratio": {
+          "type": "float",
+          "default": 0.25
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "1.3x-2x",
+      "gotchas": [
+        "Slices entire embedding rows/columns for hardware speedups."
+      ]
+    },
+    {
+      "name": "DoRA",
+      "type": "peft",
+      "class": "olive.passes.pytorch.DoRA",
+      "description": "Weight-Decomposed Low-Rank Adaptation (DoRA) fine-tuning.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "hf"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "r": {
+          "type": "int",
+          "default": 8
+        }
+      },
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "adapter",
+      "gotchas": [
+        "Decomposes weight into magnitude and direction vectors for higher accuracy than LoRA."
+      ]
+    },
+    {
+      "name": "LoHa",
+      "type": "peft",
+      "class": "olive.passes.pytorch.LoHa",
+      "description": "Low-Rank Hadamard Product (LoHa) adapter fine-tuning.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "hf"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "adapter",
+      "gotchas": [
+        "Provides higher rank parameter capacity than LoRA."
+      ]
+    },
+    {
+      "name": "LoKr",
+      "type": "peft",
+      "class": "olive.passes.pytorch.LoKr",
+      "description": "Low-Rank Kronecker Product (LoKr) adapter fine-tuning.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "hf"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "adapter",
+      "gotchas": [
+        "Kronecker product matrix decomposition for compact adapters."
+      ]
+    },
+    {
+      "name": "LoftQ",
+      "type": "peft",
+      "class": "olive.passes.pytorch.LoftQ",
+      "description": "LoftQ simultaneous quantization and low-rank adapter initialization.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "hf"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "adapter",
+      "gotchas": [
+        "Initializes LoRA weights directly from quantization residual."
+      ]
+    },
+    {
+      "name": "MergeAdapterWeights",
+      "type": "peft",
+      "class": "olive.passes.pytorch.MergeAdapterWeights",
+      "description": "Merge LoRA/QLoRA adapter weights back into base PyTorch/HF model.",
+      "input_formats": [
+        "hf"
+      ],
+      "output_formats": [
+        "hf"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Fuses adapter matrices into base model weights."
+      ]
+    },
+    {
+      "name": "ExtractAdapters",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.ExtractAdapters",
+      "description": "Extract adapters from ONNX model.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Enables dynamic adapter swapping at runtime in ONNX Runtime."
+      ]
+    },
+    {
+      "name": "SplitModel",
+      "type": "conversion",
+      "class": "olive.passes.onnx.SplitModel",
+      "description": "Split ONNX model into multiple sub-graphs for pipeline parallelism.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Splits large models across multi-GPU or NPU/CPU sub-systems."
+      ]
+    },
+    {
+      "name": "CaptureSplitInfo",
+      "type": "conversion",
+      "class": "olive.passes.pytorch.CaptureSplitInfo",
+      "description": "Capture module profiling information for model splitting.",
+      "input_formats": [
+        "hf",
+        "torch"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Profiles transformer layer costs for optimal sub-graph placement."
+      ]
+    },
+    {
+      "name": "ModelBuilder",
+      "type": "conversion",
+      "class": "olive.passes.onnx.ModelBuilder",
+      "description": "Convert generative PyTorch model to ONNX using ONNX Runtime GenAI module.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "precision": {
+          "type": "str",
+          "default": "fp16"
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "DmlExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "Optimized for ONNX Runtime GenAI execution engine."
+      ]
+    },
+    {
+      "name": "MatMulNBitsToQDQ",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.MatMulNBitsToQDQ",
+      "description": "Convert ONNX MatMulNBits nodes to standard QDQ format.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Allows engines without MatMulNBits support to execute quantized graph."
+      ]
+    },
+    {
+      "name": "DynamicToFixedShape",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.DynamicToFixedShape",
+      "description": "Convert dynamic ONNX dimensions (e.g. batch, sequence) to fixed static shapes.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "input_shapes": {
+          "type": "dict",
+          "default": {}
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "TensorrtExecutionProvider",
+        "OpenVINOExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Required for fixed-shape NPU accelerators."
+      ]
+    },
+    {
+      "name": "SelectiveMixedPrecision",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.SelectiveMixedPrecision",
+      "description": "Annotate ONNX graph nodes with selective mixed precision (FP16/FP32).",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "2x",
+      "gotchas": [
+        "Keeps sensitive ops in FP32 to prevent accuracy loss."
+      ]
+    },
+    {
+      "name": "MixedPrecisionOverrides",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.MixedPrecisionOverrides",
+      "description": "Override specific node dtypes in an ONNX model.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Fine-grained precision tuning for edge cases."
+      ]
+    },
+    {
+      "name": "GraphSurgeries",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.GraphSurgeries",
+      "description": "Apply standard ONNX graph surgeries (RemoveQDQ, RenameInputs, ReplaceErfWithTanh).",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "surgeries": {
+          "type": "list[str]",
+          "default": []
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Applies node-level modifications to fix graph incompatibilities."
+      ]
+    },
+    {
+      "name": "OnnxIODataTypeConverter",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.OnnxIODataTypeConverter",
+      "description": "Convert ONNX input/output tensor data types.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Converts graph IO to match target application expectations."
+      ]
+    },
+    {
+      "name": "OnnxScriptFusion",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.OnnxScriptFusion",
+      "description": "Fuse graph sub-patterns using onnxscript.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Custom node fusion via onnxscript."
+      ]
+    },
+    {
+      "name": "OnnxPeepholeOptimizer",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.OnnxPeepholeOptimizer",
+      "description": "Peephole graph optimizations using onnxscript and onnxoptimizer.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Fuses simple adjacent node sequences."
+      ]
+    },
+    {
+      "name": "OnnxQuantizationPreprocess",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.OnnxQuantizationPreprocess",
+      "description": "Preprocess ONNX graph (symbolic shape inference, node cleanup) before quantization.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Improves quantization accuracy and reduces QDQ node overhead."
+      ]
+    },
+    {
+      "name": "OptimumMerging",
+      "type": "conversion",
+      "class": "olive.passes.onnx.OptimumMerging",
+      "description": "Merge 2 decoder ONNX models together with an If node via Optimum.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Merges prefill and token-generation subgraphs."
+      ]
+    },
+    {
+      "name": "OrtSessionParamsTuning",
+      "type": "performance_tuning",
+      "class": "olive.passes.onnx.OrtSessionParamsTuning",
+      "description": "Automatically search for optimal ONNX Runtime session parameters.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Tunes inter_op/intra_op threads and execution mode."
+      ]
+    },
+    {
+      "name": "MobiusBuilder",
+      "type": "conversion",
+      "class": "olive.passes.onnx.mobius_builder.MobiusBuilder",
+      "description": "ONNX export via Mobius; produces loadable ORT GenAI composite packages with caching.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "model_name": {
+          "type": "str",
+          "default": "",
+          "description": "Model name or HuggingFace ID to export."
+        },
+        "cache_dir": {
+          "type": "str",
+          "default": "",
+          "description": "Directory to cache downloaded model files."
+        },
+        "precision": {
+          "type": "str",
+          "default": "fp16",
+          "enum": [
+            "fp16",
+            "fp32",
+            "int4",
+            "int8"
+          ],
+          "description": "Target precision for the exported model."
+        },
+        "use_external_data_format": {
+          "type": "bool",
+          "default": false,
+          "description": "Store weights in external files; required for models >2GB."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "varies",
+      "gotchas": [
+        "Produces ORT GenAI composite packages optimized for generative inference.",
+        "Use cache_dir to avoid repeated downloads on large models."
+      ]
+    },
+    {
+      "name": "QairtPipeline",
+      "type": "conversion",
+      "class": "olive.passes.qnn.qairt_pipeline.QairtPipeline",
+      "description": "Single-pass QAIRT LLM pipeline: YAML-recipe-driven model loading, quantization, and compilation for QNN targets. Replaces the multi-step QairtPreparation/QairtGenAIBuilder workflow.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "qnn"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "recipe_path": {
+          "type": "str",
+          "default": "",
+          "description": "Path to QAIRT YAML recipe file defining model loading, quantization, and compilation steps."
+        },
+        "quant_config": {
+          "type": "dict",
+          "default": {},
+          "description": "Quantization configuration overrides (precision, calibration, etc.)."
+        },
+        "target_device": {
+          "type": "str",
+          "default": "htp",
+          "enum": [
+            "htp",
+            "gpu",
+            "cpu"
+          ],
+          "description": "Target QNN backend device."
+        },
+        "qnn_sdk_root": {
+          "type": "str",
+          "default": "",
+          "description": "Path to Qualcomm QNN SDK root directory."
+        }
+      },
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "4x-8x",
+      "gotchas": [
+        "Replaces the deprecated QairtPreparation + QairtGenAIBuilder multi-step workflow.",
+        "Requires Qualcomm QNN SDK and QAIRT toolkit installed.",
+        "YAML recipe format is defined by Qualcomm QAIRT documentation."
+      ]
+    },
+    {
+      "name": "KQuant",
+      "type": "quantization",
+      "class": "olive.passes.pytorch.kquant.KQuant",
+      "description": "ggml-style weight-only K-quant quantization (asymmetric/symmetric, 2/4/8-bit) for PyTorch models.",
+      "input_formats": [
+        "torch",
+        "hf"
+      ],
+      "output_formats": [
+        "torch"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "bits": {
+          "type": "int",
+          "default": 4,
+          "enum": [
+            2,
+            4,
+            8
+          ],
+          "description": "Quantization bit width."
+        },
+        "symmetric": {
+          "type": "bool",
+          "default": true,
+          "description": "Use symmetric quantization (zero-point = 0) vs asymmetric."
+        },
+        "group_size": {
+          "type": "int",
+          "default": 128,
+          "description": "Block/group size for quantization granularity."
+        },
+        "quant_type": {
+          "type": "str",
+          "default": "q4_k",
+          "enum": [
+            "q2_k",
+            "q4_k",
+            "q4_0",
+            "q4_1",
+            "q5_k",
+            "q6_k",
+            "q8_0"
+          ],
+          "description": "ggml K-quant type identifier."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "4x-8x",
+      "gotchas": [
+        "Produces ggml-compatible quantized weights.",
+        "2-bit quantization may cause significant accuracy loss on smaller models.",
+        "K-quant types (q4_k, q6_k) use non-uniform bit allocation for better accuracy."
+      ]
+    },
+    {
+      "name": "OnnxKquantQuantization",
+      "type": "quantization",
+      "class": "olive.passes.onnx.onnx_kquant_quantization.OnnxKquantQuantization",
+      "description": "K-quant quantization for ONNX models using ggml-style block quantization.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "bits": {
+          "type": "int",
+          "default": 4,
+          "enum": [
+            2,
+            4,
+            8
+          ],
+          "description": "Quantization bit width."
+        },
+        "symmetric": {
+          "type": "bool",
+          "default": true,
+          "description": "Use symmetric quantization vs asymmetric."
+        },
+        "group_size": {
+          "type": "int",
+          "default": 128,
+          "description": "Block/group size for quantization granularity."
+        },
+        "quant_type": {
+          "type": "str",
+          "default": "q4_k",
+          "enum": [
+            "q2_k",
+            "q4_k",
+            "q4_0",
+            "q4_1",
+            "q5_k",
+            "q6_k",
+            "q8_0"
+          ],
+          "description": "ggml K-quant type identifier."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "DmlExecutionProvider",
+        "CoreMLExecutionProvider"
+      ],
+      "typical_compression": "4x-8x",
+      "gotchas": [
+        "ONNX variant of KQuant for models already in ONNX format.",
+        "K-quant types use non-uniform bit allocation across weight blocks.",
+        "DirectML supports K-quant execution on Windows."
+      ]
+    },
+    {
+      "name": "QuantizeEmbeddingInt8",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.quantize_embedding_int8.QuantizeEmbeddingInt8",
+      "description": "Graph surgery for INT8 embedding quantization. Reduces embedding table memory by quantizing to int8.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "DmlExecutionProvider"
+      ],
+      "typical_compression": "2x-4x",
+      "gotchas": [
+        "Reduces embedding table size by 2-4x with minimal accuracy impact.",
+        "Pairs well with ShareEmbeddingLmHead for additional memory savings.",
+        "Most effective on large-vocabulary language models."
+      ]
+    },
+    {
+      "name": "ShareEmbeddingLmHead",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.share_embedding_lm_head.ShareEmbeddingLmHead",
+      "description": "Graph surgery to share embedding and LM-head weights, reducing model size for language models with tied embeddings.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider",
+        "DmlExecutionProvider"
+      ],
+      "typical_compression": "10-30%",
+      "gotchas": [
+        "Only effective for models where embedding and LM-head are architecturally tied.",
+        "Pairs with QuantizeEmbeddingInt8 for maximum embedding memory savings.",
+        "No effect on models that already share weights internally."
+      ]
+    },
+    {
+      "name": "SimplifiedLayerNormToRMSNorm",
+      "type": "graph_optimization",
+      "class": "olive.passes.onnx.simplified_layer_norm_to_rms_norm.SimplifiedLayerNormToRMSNorm",
+      "description": "Graph surgery converting SimplifiedLayerNorm nodes to RMSNorm for improved QNN compatibility and performance.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {},
+      "hardware_requirements": [
+        "QNNExecutionProvider"
+      ],
+      "typical_compression": "none",
+      "gotchas": [
+        "Targeted at QNN execution providers where RMSNorm has native hardware support.",
+        "SimplifiedLayerNorm and RMSNorm are mathematically equivalent when mean is zero.",
+        "May improve inference latency on Qualcomm NPUs."
+      ]
+    },
+    {
+      "name": "OnnxDiscrepancyCheck",
+      "type": "validation",
+      "class": "olive.passes.onnx.onnx_discrepancy_check.OnnxDiscrepancyCheck",
+      "description": "Measures numerical discrepancies on a test model to validate conversions and optimizations. This is a validation pass that does not modify the model.",
+      "input_formats": [
+        "onnx"
+      ],
+      "output_formats": [
+        "onnx"
+      ],
+      "required_params": [],
+      "optional_params": {
+        "test_data_dir": {
+          "type": "str",
+          "default": "",
+          "description": "Directory containing test input/output data for discrepancy measurement."
+        },
+        "rtol": {
+          "type": "float",
+          "default": 1e-5,
+          "description": "Relative tolerance for numerical comparison."
+        },
+        "atol": {
+          "type": "float",
+          "default": 1e-6,
+          "description": "Absolute tolerance for numerical comparison."
+        }
+      },
+      "hardware_requirements": [
+        "CPUExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "typical_compression": "none (validation only)",
+      "gotchas": [
+        "This pass does not modify the model — it only measures discrepancies.",
+        "Useful for validating that quantization or graph surgery preserved numerical accuracy.",
+        "Requires reference test data for meaningful comparison."
+      ]
+    }
+  ]
+}

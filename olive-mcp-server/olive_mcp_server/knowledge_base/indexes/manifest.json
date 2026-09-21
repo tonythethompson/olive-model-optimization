@@ -1,0 +1,18 @@
+{
+  "model": "BAAI/bge-small-en-v1.5",
+  "dim": 384,
+  "indexes": {
+    "docs_kb": {
+      "content_hash": "f0c2a2173c54e20b94a3af72c349c231e5b4571d8f5f082765859816c96ecef9",
+      "count": 4711
+    },
+    "ts_olive": {
+      "content_hash": "bdea6364e803addd4bec02eeb28f4e52315227ed4eda459c87f791f63b144b70",
+      "count": 36
+    },
+    "ts_studio": {
+      "content_hash": "36dcdf321ad6d99545edfbc4a9dea97d26e106de1ddcc2da7d7faa785a894c50",
+      "count": 12
+    }
+  }
+}

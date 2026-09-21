@@ -1,0 +1,181 @@
+{
+  "version": "0.2.0",
+  "last_updated": "2026-08-06",
+  "entries": [
+    {
+      "id": "studio-pytorch-hf-config",
+      "domain": "studio",
+      "patterns": [
+        "hf_config",
+        "unexpected keyword argument 'hf_config'",
+        "unexpected keyword argument \"hf_config\"",
+        "PyTorchModelHandler",
+        "PyTorchModel"
+      ],
+      "title": "Recipe used hf_config on PyTorchModel (Olive Studio builder)",
+      "root_cause": "Older Olive Studio recipes emitted type PyTorchModel with hf_config. Olive 0.13+ PyTorchModelHandler rejects hf_config; Hugging Face sources must use HfModel.",
+      "solution": "Rebuild the recipe in Olive Studio (Input → Parse & Apply or re-enable passes). Current Studio builders emit HfModel for Hugging Face IDs. If you imported raw JSON, change input_model.type to HfModel and keep model_path as the HF id.",
+      "updated_config": {},
+      "applyable": false,
+      "related_olive_entry": null
+    },
+    {
+      "id": "studio-apply-fix-empty",
+      "domain": "studio",
+      "patterns": ["Apply Fix", "no auto-applyable", "updated_config", "Fix Applied", "Apply did nothing"],
+      "title": "Apply Fix or chat Apply did not change pipeline state",
+      "root_cause": "The diagnostic had no mappable updated_config (applyable=false), or the patch keys are not in Olive Studio's UI mapping (for example data_configs-only remedies).",
+      "solution": "Follow the Recommended Fix text manually. For calibration data_configs, set Dataset / user script in Input. For chat suggestions, use Apply only when an action card is shown; plain advice has no patch.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-venv-mcp-pin",
+      "domain": "studio",
+      "patterns": [
+        "mcp.server.fastmcp",
+        "No module named 'mcp'",
+        "mcp<2",
+        "ModuleNotFoundError: mcp",
+        "cannot import name FastMCP"
+      ],
+      "title": "Olive MCP package missing or mcp 2.x broke FastMCP import",
+      "root_cause": "Olive Studio's MCP server needs mcp<2 (FastMCP lives under mcp.server.fastmcp in 1.x). Wrong venv or mcp 2.x removes that path.",
+      "solution": "In olive-mcp-server: pip install -e \".[dev]\" \"mcp<2\". Restart the MCP / app process. Prefer the project .venv used by Olive Studio.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-ai-provider-inactive",
+      "domain": "studio",
+      "patterns": [
+        "No AI provider configured",
+        "Active Provider",
+        "provider not set",
+        "Load model",
+        "Ollama",
+        "Assistant → Settings"
+      ],
+      "title": "Assistant provider not active in Olive Studio",
+      "root_cause": "Chat/Audit call the server AI runtime. Downloading a local model does not switch Active Provider until Settings saves the provider/model.",
+      "solution": "Open Assistant → Settings, select the provider (Ollama, OpenRouter, …), pick/load the model, Save. Confirm the sidebar header shows the active provider.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-diagnose-wiring",
+      "domain": "studio",
+      "patterns": [
+        "Unknown tool: call_tool",
+        "Diagnosis failed",
+        "Diagnosis returned an unexpected",
+        "/api/mcp/tool",
+        "olive_mcp_server"
+      ],
+      "title": "Diagnose could not reach Olive MCP tools",
+      "root_cause": "Olive Studio proxies Diagnose through POST /api/mcp/tool → olive_mcp_server.call_tool. Missing package install, wrong Python, or an unknown tool name yields empty/failed diagnosis.",
+      "solution": "Install olive-mcp-server into the app .venv (pip install -e olive-mcp-server \"mcp<2\"). Restart pnpm dev. Re-run Diagnose; you should see title/root_cause from the KB.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-tensorrt-pip-invalid-requirement",
+      "domain": "studio",
+      "patterns": ["Invalid requirement", "==10.9.0.34"],
+      "title": "TensorRT install used a bare version pin",
+      "root_cause": "Olive Studio Hardware install must pass a package name (for example tensorrt==…) not a lone ==version string.",
+      "solution": "Use Hardware → Install for TensorRT / TensorRT RTX, or pip install tensorrt==<version> / tensorrt-rtx explicitly in the app .venv. Retry after a successful install.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-recipe-not-parsed",
+      "domain": "studio",
+      "patterns": ["Parse & Apply", "JSON editor", "Pull from GitHub", "shortcut", "recipe not applied"],
+      "title": "Pulled recipe JSON did not update the pipeline UI",
+      "root_cause": "Olive Studio GitHub shortcuts and Pull from GitHub load JSON into the Editor tab only. Pipeline toggles change after Parse & Apply.",
+      "solution": "Open the Editor tab, confirm the JSON, then click Parse & Apply. Shortcuts intentionally do not auto-apply.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-unique-cache-dir",
+      "domain": "studio",
+      "patterns": ["cache_dir", "Olive Studio cache", "experiment cache", "intermediate overwrite"],
+      "title": "Isolate Olive Studio cache directory for this experiment",
+      "root_cause": "Shared cache_dir across experiments can make multi-pass outputs hard to reason about in Studio.",
+      "solution": "Set a unique cache directory in Infrastructure / workspace settings, then re-run.",
+      "updated_config": {
+        "engine": {
+          "cache_dir": "~/.cache/olive/studio_experiment"
+        }
+      },
+      "applyable": true
+    },
+    {
+      "id": "studio-tensorrt-rtx-missing",
+      "domain": "studio",
+      "patterns": [
+        "NvTensorRTRTXExecutionProvider",
+        "tensorrt-rtx",
+        "TensorRT RTX",
+        "TensorRT RTX not registered",
+        "NvTensorRTRTX"
+      ],
+      "title": "TensorRT RTX execution provider not registered",
+      "root_cause": "Consumer TensorRT RTX path needs both the tensorrt-rtx package and a matching ONNX Runtime EP-ABI plugin build, not the full nvinfer TensorRT SDK. Missing install or SM < 7.5 leaves NvTensorRTRTXExecutionProvider unregistered.",
+      "solution": "Install both tensorrt-rtx and the matching ONNX Runtime EP-ABI plugin (Hardware → Install TensorRT RTX, or pip in the app venv). Requires NVIDIA GPU SM ≥ 7.5 (Turing+). Verify NvTensorRTRTXExecutionProvider appears in onnxruntime.get_available_providers(). Prefer AWQ INT4 (NVModelOpt) over PTQ INT8/QDQ for this EP. Restart the app after install.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-directml-missing",
+      "domain": "studio",
+      "patterns": [
+        "DmlExecutionProvider",
+        "DirectMLExecutionProvider",
+        "onnxruntime-directml",
+        "DirectML",
+        "DirectML EP"
+      ],
+      "title": "DirectML execution provider missing or wrong venv",
+      "root_cause": "DirectML requires Windows 10/11 + DirectX 12 and onnxruntime-directml in the default-family venv. CUDA/GPU ORT wheels do not expose DmlExecutionProvider.",
+      "solution": "On Windows, install onnxruntime-directml into the Olive Studio default venv (Hardware → DirectML or pip). Do not mix CUDA/TRT packages into the DirectML EP path. Non-Windows hosts cannot run DirectML.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-webgpu-local-blocked",
+      "domain": "studio",
+      "patterns": [
+        "WebGpuExecutionProvider",
+        "WebGPU",
+        "webgpu",
+        "ORT Web WebGPU",
+        "browser WebGPU"
+      ],
+      "title": "WebGPU is browser-only — local Execute Live blocked",
+      "root_cause": "WebGpuExecutionProvider targets ONNX Runtime Web in the browser. Olive Studio marks WebGPU recipes non-runnable locally (isRunnable: false / localExecutionIssues).",
+      "solution": "Use Export recipe / download ONNX for in-browser ORT Web WebGPU. Prefer FP16 (OnnxFloatToFloat16). Do not expect Execute Live or local Olive CLI to run WebGPU.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "studio-openvino-npu-device",
+      "domain": "studio",
+      "patterns": [
+        "OpenVINO NPU",
+        "device NPU",
+        "openvinoTargetDevice\": \"NPU\"",
+        "openvinoTargetDevice: NPU",
+        "Core Ultra NPU",
+        "device=NPU"
+      ],
+      "title": "OpenVINO NPU needs target device NPU (not EP rename)",
+      "root_cause": "Intel NPU still uses OpenVINOExecutionProvider. The device is selected separately via openvinoTargetDevice (or equivalent). Without device=NPU and the OpenVINO NPU driver, work stays on CPU.",
+      "solution": "In Olive Studio set OpenVINO target device to NPU. Install the OpenVINO NPU driver on Intel Core Ultra / Meteor Lake+. Prefer OpenVINO weight-compression or INT8 paths; verify unsupported ops are not silently falling back to CPU.",
+      "updated_config": {},
+      "applyable": false
+    }
+  ]
+}

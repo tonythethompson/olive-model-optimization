@@ -1,0 +1,910 @@
+{
+  "version": "0.5.0",
+  "last_updated": "2026-08-10",
+  "profiles": [
+    {
+      "target": "NVIDIA RTX 4090",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "TensorrtExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "NVModelOptQuantization",
+        "OnnxFloatToFloat16",
+        "KQuant"
+      ],
+      "typical_speedup": "8-15x",
+      "calibration_size": 300,
+      "optimal_batch_size": 32,
+      "memory_gb": 24,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "GELU"
+      ],
+      "known_issues": [
+        "TensorRT requires per-engine calibration for INT8; build can be slow."
+      ],
+      "notes": "Use TensorRT for maximum throughput; AWQ int4 from NVModelOpt is best for LLMs."
+    },
+    {
+      "target": "NVIDIA T4",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "TensorrtExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "NVModelOptQuantization",
+        "OnnxStaticQuantization",
+        "KQuant"
+      ],
+      "typical_speedup": "4-8x",
+      "calibration_size": 256,
+      "optimal_batch_size": 16,
+      "memory_gb": 16,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization"
+      ],
+      "known_issues": [
+        "Limited INT8 tensor core support; verify QDQ placement."
+      ],
+      "notes": "T4 benefits from TensorRT INT8 but smaller batch sizes due to memory."
+    },
+    {
+      "target": "Intel Core i9 CPU",
+      "accelerator": "cpu",
+      "execution_providers": [
+        "CPUExecutionProvider",
+        "OpenVINOExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer",
+        "KQuant"
+      ],
+      "typical_speedup": "2-4x",
+      "calibration_size": 128,
+      "optimal_batch_size": 1,
+      "memory_gb": 64,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "MaxPool",
+        "AveragePool"
+      ],
+      "known_issues": [
+        "OpenVINO EP on CPU can silently fall back to CPUExecutionProvider for unsupported ops."
+      ],
+      "notes": "Static INT8 with QOperator is fastest on CPU; OpenVINO for CNNs."
+    },
+    {
+      "target": "Qualcomm Snapdragon NPU",
+      "accelerator": "npu",
+      "execution_providers": [
+        "QNNExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxModelOptimizer",
+        "QNNQuantization",
+        "QairtPipeline"
+      ],
+      "typical_speedup": "5-10x",
+      "calibration_size": 128,
+      "optimal_batch_size": 1,
+      "memory_gb": 8,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Transpose",
+        "Reshape",
+        "Softmax"
+      ],
+      "known_issues": [
+        "Operator whitelist is narrow; LayerNorm and GELU may need replacement.",
+        "Requires symmetric per-channel quantization."
+      ],
+      "notes": "Use QNNPreprocess if available; verify opset compatibility."
+    },
+    {
+      "target": "Qualcomm Snapdragon QNN ABI",
+      "accelerator": "npu",
+      "execution_providers": [
+        "QnnAbiExecutionProvider"
+      ],
+      "recommended_passes": [
+        "QairtPipeline",
+        "SimplifiedLayerNormToRMSNorm",
+        "OnnxConversion",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "5-12x",
+      "calibration_size": 128,
+      "optimal_batch_size": 1,
+      "memory_gb": 8,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Transpose",
+        "Reshape",
+        "Softmax",
+        "RMSNorm"
+      ],
+      "known_issues": [
+        "QNN ABI EP requires QAIRT SDK and QNN ABI-compatible runtime.",
+        "Operator whitelist is narrow; use SimplifiedLayerNormToRMSNorm for graph compatibility.",
+        "Requires symmetric per-channel quantization."
+      ],
+      "notes": "New in olive-ai 0.13.0 (PR #2434). ABI-stable QNN execution provider; use QairtPipeline for single-pass LLM quantization+compilation. Prefer over legacy QNNExecutionProvider multi-step workflow."
+    },
+    {
+      "target": "Apple CoreML (Neural Engine / Apple GPU)",
+      "accelerator": "npu",
+      "execution_providers": [
+        "CoreMLExecutionProvider"
+      ],
+      "platform": {
+        "os": "macOS",
+        "arch": "arm64",
+        "description": "Apple Silicon (M1/M2/M3/M4 series)"
+      },
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxDynamicQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "compatible_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxDynamicQuantization",
+        "OnnxBlockWiseRtnQuantization",
+        "OnnxKquantQuantization",
+        "QATQuantizer",
+        "OnnxHqqQuantization",
+        "LoRA"
+      ],
+      "incompatible_passes": [
+        "AutoAWQQuantizer",
+        "GptqQuantizer",
+        "Gptq",
+        "SpinQuant",
+        "QuaRot",
+        "QLoRA"
+      ],
+      "typical_speedup": "3-7x",
+      "calibration_size": 100,
+      "optimal_batch_size": 1,
+      "memory_gb": 16,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "GELU"
+      ],
+      "known_issues": [
+        "CoreML requires per-channel quantization for some layers.",
+        "Dynamic shapes are limited; fixed input shapes recommended for optimal ANE scheduling.",
+        "Requires coremltools for model conversion."
+      ],
+      "notes": "CoreML targets the Apple Neural Engine and Apple GPU. Fixed input shapes recommended for optimal ANE scheduling. Requires coremltools for model conversion."
+    },
+    {
+      "target": "Android NNAPI",
+      "accelerator": "npu",
+      "execution_providers": [
+        "NNAPIExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "2-6x",
+      "calibration_size": 64,
+      "optimal_batch_size": 1,
+      "memory_gb": 4,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "MaxPool",
+        "AveragePool",
+        "Softmax"
+      ],
+      "known_issues": [
+        "NNAPI has strict quantization limits (often uint8 only).",
+        "Many ops not accelerated; fallback common."
+      ],
+      "notes": "Keep model small and avoid unsupported ops."
+    },
+    {
+      "target": "Intel iGPU / OpenVINO",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "OpenVINOExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OpenVINOConversion",
+        "OnnxStaticQuantization"
+      ],
+      "typical_speedup": "3-6x",
+      "calibration_size": 100,
+      "optimal_batch_size": 8,
+      "memory_gb": 8,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization"
+      ],
+      "known_issues": [
+        "OpenVINO plugin must be installed separately."
+      ],
+      "notes": "Use FP16 or INT8 on Intel iGPUs for best throughput."
+    },
+    {
+      "target": "Xilinx Vitis AI DPU",
+      "accelerator": "npu",
+      "execution_providers": [
+        "VitisAIExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxModelOptimizer",
+        "VitisAIQuantization"
+      ],
+      "typical_speedup": "5-12x",
+      "calibration_size": 128,
+      "optimal_batch_size": 4,
+      "memory_gb": 4,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "MaxPool",
+        "AveragePool",
+        "ReLU"
+      ],
+      "known_issues": [
+        "Power-of-2 scale constraint limits accuracy; use calibration carefully."
+      ],
+      "notes": "Best for edge CNN workloads on Xilinx boards."
+    },
+    {
+      "target": "NVIDIA A100",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "NVModelOptQuantization",
+        "OnnxFloatToFloat16",
+        "KQuant"
+      ],
+      "typical_speedup": "10-20x",
+      "calibration_size": 512,
+      "optimal_batch_size": 64,
+      "memory_gb": 80,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "GELU"
+      ],
+      "known_issues": [
+        "Large batch sizes may need gradient checkpointing during calibration."
+      ],
+      "notes": "A100 supports FP16/INT8/TensorRT; best for large LLMs and batch inference."
+    },
+    {
+      "target": "AMD MI300X / ROCm",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "3-6x",
+      "calibration_size": 256,
+      "optimal_batch_size": 16,
+      "memory_gb": 192,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention"
+      ],
+      "known_issues": [
+        "Operator coverage lags CUDA; verify with ROCm EP whitelist."
+      ],
+      "notes": "Use ONNX Runtime ROCm EP; MI300X has large HBM for big models."
+    },
+    {
+      "target": "NVIDIA Jetson Orin",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "TensorrtExecutionProvider",
+        "CUDAExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxFloatToFloat16",
+        "KQuant"
+      ],
+      "typical_speedup": "4-8x",
+      "calibration_size": 128,
+      "optimal_batch_size": 1,
+      "memory_gb": 32,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention"
+      ],
+      "known_issues": [
+        "Limited memory; use external data format for large models."
+      ],
+      "notes": "Best for edge vision models with TensorRT INT8."
+    },
+    {
+      "target": "Intel Arc A770",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "OpenVINOExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OpenVINOConversion",
+        "OnnxStaticQuantization"
+      ],
+      "typical_speedup": "3-6x",
+      "calibration_size": 128,
+      "optimal_batch_size": 8,
+      "memory_gb": 16,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization"
+      ],
+      "known_issues": [
+        "OpenVINO GPU plugin must be installed."
+      ],
+      "notes": "Use OpenVINO FP16 or INT8 for Arc GPUs."
+    },
+    {
+      "target": "Raspberry Pi 5 (CPU)",
+      "accelerator": "cpu",
+      "execution_providers": [
+        "CPUExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "2-3x",
+      "calibration_size": 64,
+      "optimal_batch_size": 1,
+      "memory_gb": 8,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "MaxPool"
+      ],
+      "known_issues": [
+        "Very limited memory; small models and small calibration sets only."
+      ],
+      "notes": "Quantize to INT8 and keep the model under 2GB."
+    },
+    {
+      "target": "Azure ML N-series",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "CUDAExecutionProvider",
+        "TensorrtExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxQuantization",
+        "AzureMLQuantization",
+        "KQuant"
+      ],
+      "typical_speedup": "4-8x",
+      "calibration_size": 256,
+      "optimal_batch_size": 16,
+      "memory_gb": 48,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization"
+      ],
+      "known_issues": [
+        "AzureML pipeline requires AML workspace and compute target."
+      ],
+      "notes": "Cloud inference with ONNX Runtime on Azure NC/ND-series VMs."
+    },
+    {
+      "target": "NVIDIA TensorRT RTX",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "NvTensorRTRTXExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "NVModelOptQuantization",
+        "OnnxFloatToFloat16"
+      ],
+      "typical_speedup": "5-12x",
+      "calibration_size": 128,
+      "optimal_batch_size": 8,
+      "memory_gb": 12,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "GELU"
+      ],
+      "known_issues": [
+        "The tensorrt-rtx package installs the standalone TensorRT RTX EP-ABI provider library implementing NvTensorRTRTXExecutionProvider for ONNX Runtime 1.23+ (not the full TensorRT / nvinfer SDK). Requires SM ≥ 7.5 (Turing+).",
+        "PTQ INT8/QDQ path is a poor fit for tensorrt-rtx; prefer AWQ INT4."
+      ],
+      "notes": "Consumer RTX path via JIT TensorRT engines; distinct from full TensorrtExecutionProvider / nvinfer SDK. Align with Olive Studio provider catalog TRT RTX."
+    },
+    {
+      "target": "Intel Core Ultra NPU (OpenVINO)",
+      "accelerator": "npu",
+      "execution_providers": [
+        "OpenVINOExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OpenVINOConversion",
+        "OpenVINOWeightCompression"
+      ],
+      "typical_speedup": "3-8x",
+      "calibration_size": 100,
+      "optimal_batch_size": 1,
+      "memory_gb": 16,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization"
+      ],
+      "known_issues": [
+        "NPU plugin requires Intel Core Ultra / Meteor Lake+ with OpenVINO NPU driver.",
+        "Unsupported ops fall back to CPU; verify OpenVINO device=NPU.",
+        "Olive Studio sets openvinoTargetDevice: \"NPU\" separately from EP id.",
+        "OpenVINOOptimumConversion is torch/HF-only; use OpenVINOConversion for ONNX sources."
+      ],
+      "notes": "Maps app OpenVINO + NPU device target. Prefer INT8/weight-compression paths documented for OpenVINO. Default chain uses OpenVINOConversion (torch|onnx) before OpenVINOWeightCompression."
+    },
+    {
+      "target": "Windows DirectML GPU",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "DmlExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxModelOptimizer",
+        "OnnxStaticQuantization"
+      ],
+      "typical_speedup": "2-5x",
+      "calibration_size": 128,
+      "optimal_batch_size": 8,
+      "memory_gb": 8,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "MaxPool"
+      ],
+      "known_issues": [
+        "Windows 10/11 + DirectX 12 only; needs onnxruntime-directml.",
+        "Operator coverage differs from CUDA; validate graph."
+      ],
+      "notes": "Olive Studio default-family venv path for DirectML. Prefer INT8 PTQ. Do not mix CUDA/TRT packages into this EP path."
+    },
+    {
+      "target": "WebGPU (Browser)",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "WebGpuExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxModelOptimizer",
+        "OnnxFloatToFloat16"
+      ],
+      "typical_speedup": "1-3x",
+      "calibration_size": 64,
+      "optimal_batch_size": 1,
+      "memory_gb": 4,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Softmax"
+      ],
+      "known_issues": [
+        "Browser WebGPU only (ORT Web); not a local Olive CLI/EP execution target in Studio.",
+        "Olive Studio blocks local run for WebGPU (isRunnable: false / localExecutionIssues).",
+        "INT8 support varies by browser/GPU."
+      ],
+      "notes": "Export/optimize ONNX for in-browser ORT Web WebGPU. Prefer FP16. Use Studio for recipe build/export, not Execute Live."
+    },
+    {
+      "target": "XNNPACK (Mobile)",
+      "accelerator": "cpu",
+      "execution_providers": [
+        "XnnpackExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxModelOptimizer",
+        "OnnxFloatToFloat16"
+      ],
+      "typical_speedup": "1-3x",
+      "calibration_size": 64,
+      "optimal_batch_size": 1,
+      "memory_gb": 4,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Softmax",
+        "Relu"
+      ],
+      "known_issues": [
+        "OWR / ORT Mobile CPU backend only; not a local Olive Studio Execute Live EP.",
+        "Prefer as mobile CPU fallback beside NNAPI."
+      ],
+      "notes": "Export-target profile. Recommend FP16/INT8 export chains similar to WebGPU, not CUDA AWQ."
+    },
+    {
+      "target": "WASM (Browser)",
+      "accelerator": "cpu",
+      "execution_providers": [
+        "WasmExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxModelOptimizer",
+        "OnnxFloatToFloat16"
+      ],
+      "typical_speedup": "0.5-2x",
+      "calibration_size": 64,
+      "optimal_batch_size": 1,
+      "memory_gb": 2,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Softmax"
+      ],
+      "known_issues": [
+        "ORT Web WASM CPU path; not a local Olive Python EP.",
+        "Often paired as WebGPU fallback in OWR web configs."
+      ],
+      "notes": "Export-target profile for browser CPU. Prefer FP16; keep graphs small."
+    },
+    {
+      "target": "Qualcomm SNPE (Legacy)",
+      "accelerator": "npu",
+      "execution_providers": [
+        "SNPEExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "SNPEConversion"
+      ],
+      "typical_speedup": "2-6x",
+      "calibration_size": 64,
+      "optimal_batch_size": 1,
+      "memory_gb": 4,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Relu",
+        "Softmax"
+      ],
+      "known_issues": [
+        "Legacy Qualcomm SNPE / DLC path; prefer QNNExecutionProvider for new Snapdragon work.",
+        "Not available for Studio Execute Live."
+      ],
+      "notes": "Legacy export profile. MCP should prefer QNN hardware guidance; keep SNPE only for DLC conversion recipes."
+    },
+    {
+      "target": "TensorFlow Lite Export",
+      "accelerator": "cpu",
+      "execution_providers": [
+        "TensorflowLiteExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "1-3x",
+      "calibration_size": 64,
+      "optimal_batch_size": 1,
+      "memory_gb": 2,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "MaxPool",
+        "Softmax"
+      ],
+      "known_issues": [
+        "Olive has no first-class .tflite emitter in this catalog; this profile prepares ONNX for external TFLite tooling.",
+        "Not a local Olive Execute Live EP — export/recipe only.",
+        "Operator coverage differs from ONNX ORT EPs."
+      ],
+      "notes": "ONNX preparation profile for external TensorFlow Lite conversion (e.g. onnx2tf / TFLite converter). Studio marks TensorflowLiteExecutionProvider as an export target; do not treat the recommended Olive passes as a complete .tflite export chain."
+    },
+    {
+      "target": "AMD Instinct MI300X (MIGraphX)",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "MIGraphXExecutionProvider",
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxFloatToFloat16",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting vendor benchmark data",
+      "calibration_size": 128,
+      "optimal_batch_size": 32,
+      "memory_gb": 192,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "MatMul"
+      ],
+      "known_issues": [
+        "MIGraphX operator subset coverage: models with custom ops or dynamic control flow may fall back to ROCm EP.",
+        "Custom-op and dynamic-control-flow graphs are not supported by MIGraphX graph compilation."
+      ],
+      "notes": "MIGraphX performs graph-level compilation (analogous to TensorRT), preferred over ROCm EP when model operators are within MIGraphX coverage.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    },
+    {
+      "target": "AMD Instinct MI325X (MIGraphX)",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "MIGraphXExecutionProvider",
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxFloatToFloat16",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting vendor benchmark data",
+      "calibration_size": 128,
+      "optimal_batch_size": 64,
+      "memory_gb": 256,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "MatMul"
+      ],
+      "known_issues": [
+        "MIGraphX operator subset coverage: models with custom ops or dynamic control flow may fall back to ROCm EP.",
+        "Custom-op and dynamic-control-flow graphs are not supported by MIGraphX graph compilation."
+      ],
+      "notes": "MIGraphX performs graph-level compilation (analogous to TensorRT), preferred over ROCm EP when model operators are within MIGraphX coverage.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    },
+    {
+      "target": "AMD Instinct MI350X (MIGraphX)",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "MIGraphXExecutionProvider",
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxFloatToFloat16",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting vendor benchmark data (unreleased silicon)",
+      "calibration_size": 128,
+      "optimal_batch_size": 64,
+      "memory_gb": 288,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "MatMul"
+      ],
+      "known_issues": [
+        "MIGraphX operator subset coverage: models with custom ops or dynamic control flow may fall back to ROCm EP.",
+        "Custom-op and dynamic-control-flow graphs are not supported by MIGraphX graph compilation.",
+        "Unreleased silicon — specifications are based on AMD announcements and subject to change."
+      ],
+      "notes": "MIGraphX performs graph-level compilation (analogous to TensorRT), preferred over ROCm EP when model operators are within MIGraphX coverage.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    },
+    {
+      "target": "AMD Instinct MI355X (MIGraphX)",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "MIGraphXExecutionProvider",
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxFloatToFloat16",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting vendor benchmark data (unreleased silicon)",
+      "calibration_size": 128,
+      "optimal_batch_size": 64,
+      "memory_gb": 288,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention",
+        "LayerNormalization",
+        "MatMul"
+      ],
+      "known_issues": [
+        "MIGraphX operator subset coverage: models with custom ops or dynamic control flow may fall back to ROCm EP.",
+        "Custom-op and dynamic-control-flow graphs are not supported by MIGraphX graph compilation.",
+        "Unreleased silicon — specifications are based on AMD announcements and subject to change."
+      ],
+      "notes": "MIGraphX performs graph-level compilation (analogous to TensorRT), preferred over ROCm EP when model operators are within MIGraphX coverage.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    },
+    {
+      "target": "AMD Radeon RX 9070 XT",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxFloatToFloat16",
+        "GptqQuantizer",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting community ROCm benchmarks on RDNA 4",
+      "calibration_size": 128,
+      "optimal_batch_size": 8,
+      "memory_gb": 16,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention"
+      ],
+      "known_issues": [
+        "RDNA 4 (gfx12) has experimental ROCm support; stability and operator coverage may change between driver releases.",
+        "Operator coverage is narrower than CDNA-based Instinct GPUs — AWQ, mixed-precision FP16 accumulation, and structured 2:4 sparsity are unsupported.",
+        "ROCm driver versions below 6.2 may produce incorrect results or fail to load models on RDNA 4."
+      ],
+      "notes": "Consumer Radeon relies on community-maintained ROCm builds, narrower operator coverage than Instinct. Prefer GPTQ over AWQ for quantization on RDNA architectures.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    },
+    {
+      "target": "AMD Radeon RX 9070",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxFloatToFloat16",
+        "GptqQuantizer",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting community ROCm benchmarks on RDNA 4",
+      "calibration_size": 64,
+      "optimal_batch_size": 4,
+      "memory_gb": 12,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention"
+      ],
+      "known_issues": [
+        "RDNA 4 (gfx12) has experimental ROCm support; stability and operator coverage may change between driver releases.",
+        "Operator coverage is narrower than CDNA-based Instinct GPUs — AWQ, mixed-precision FP16 accumulation, and structured 2:4 sparsity are unsupported.",
+        "ROCm driver versions below 6.2 may produce incorrect results or fail to load models on RDNA 4."
+      ],
+      "notes": "Consumer Radeon relies on community-maintained ROCm builds, narrower operator coverage than Instinct. Prefer GPTQ over AWQ for quantization on RDNA architectures.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    },
+    {
+      "target": "AMD Radeon RX Consumer / ROCm",
+      "accelerator": "gpu",
+      "execution_providers": [
+        "ROCMExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "GptqQuantizer",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting community ROCm benchmarks",
+      "calibration_size": 64,
+      "optimal_batch_size": 8,
+      "memory_gb": 16,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "Attention"
+      ],
+      "known_issues": [
+        "AWQ quantization is unsupported on RDNA consumer GPUs — use GPTQ instead.",
+        "Consumer Radeon GPUs have narrower operator coverage than datacenter AMD Instinct GPUs."
+      ],
+      "notes": "Generic consumer Radeon profile (RX 6000/7000/9000 series). GPTQ INT4 recommended for LLMs; OnnxFloatToFloat16 for vision models.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    },
+    {
+      "target": "Intel Core (oneDNN)",
+      "accelerator": "cpu",
+      "execution_providers": [
+        "DnnlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "recommended_passes": [
+        "OnnxConversion",
+        "OnnxStaticQuantization",
+        "OnnxModelOptimizer"
+      ],
+      "typical_speedup": "TBD — awaiting oneDNN vs bare CPU benchmarks",
+      "calibration_size": 64,
+      "optimal_batch_size": 16,
+      "memory_gb": 32,
+      "ops_supported": [
+        "Conv",
+        "Gemm",
+        "MatMul",
+        "Attention",
+        "LayerNormalization"
+      ],
+      "known_issues": [
+        "DnnlExecutionProvider availability depends on the ORT build variant — present in default onnxruntime wheel but absent from onnxruntime-gpu and platform-specific builds that strip CPU-only EPs."
+      ],
+      "notes": "oneDNN requires no additional package installation beyond the default ONNX Runtime wheel. Suited for Intel CPU inference workloads without OpenVINO IR conversion.",
+      "_speedup_unverified": true,
+      "_data_source": "estimated — no official vendor benchmark"
+    }
+  ]
+}

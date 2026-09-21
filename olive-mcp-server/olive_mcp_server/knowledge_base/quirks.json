@@ -1,0 +1,138 @@
+{
+  "version": "0.3.0",
+  "last_updated": "2026-07-31",
+  "categories": {
+    "quantization": [
+      {
+        "id": "calib-static-vs-dynamic",
+        "title": "Static vs Dynamic Quantization",
+        "description": "Static quantization requires a representative calibration dataset matched to the inference distribution and yields better compression. Dynamic quantization computes scale/zp at runtime, needs no calibration, but can be slower and less accurate for CNNs.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "calib-per-channel",
+        "title": "Per-Channel vs Per-Tensor",
+        "description": "Per-channel weights improve accuracy for CNNs but are slower and not supported on all mobile NPUs. Qualcomm NPU requires symmetric per-channel quantization. NVIDIA TensorRT supports per-channel but engine build is slower.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "calib-symmetric",
+        "title": "Symmetric vs Asymmetric Quantization",
+        "description": "Symmetric quantization (zero point = 0) is easier for accelerators. Asymmetric can improve accuracy but requires hardware support and may fail on some NPUs. QNN/CoreML prefer symmetric.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "calib-size",
+        "title": "Calibration Size Sensitivity",
+        "description": "Too few samples produce poor statistics; too many slow calibration with diminishing returns. A good starting point is 100-300 samples. Data must match inference distribution.",
+        "source": "empirical observation from community issues"
+      }
+    ],
+    "onnx_export": [
+      {
+        "id": "onnx-dynamic-axes",
+        "title": "Dynamic Shape Handling",
+        "description": "ONNX export with fixed batch/sequence dimensions creates inflexible models. Use dynamic_axes to preserve variable dimensions, especially for LLMs.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "onnx-opset",
+        "title": "Opset Version Compatibility",
+        "description": "Higher opsets support more operators but reduce hardware compatibility. QNN and CoreML often require opset 13-17. Default to 14 unless a specific EP demands higher.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "onnx-external-data",
+        "title": "External Data Format",
+        "description": "Models with weights >2GB must set use_external_data_format=True, producing a .onnx file plus .onnx_data external tensors. Failure to do so causes ONNX export OOM or invalid model errors.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "onnx-type-cast",
+        "title": "Type Casting Defaults",
+        "description": "Some frameworks default to float64 for small constants. ONNX Runtime and most EPs prefer float32. Cast constants before export or use OnnxFloatToFloat16 carefully.",
+        "source": "https://microsoft.github.io/Olive/"
+      }
+    ],
+    "pass_ordering": [
+      {
+        "id": "order-convert-first",
+        "title": "Convert Before Quantize",
+        "description": "Quantization passes (OnnxQuantization, QNNQuantization) require an ONNX input. Running quantization before OnnxConversion fails with a format mismatch. The canonical chain is Convert -> Optimize -> Quantize -> (Optionally) Float16.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "order-float16-last",
+        "title": "Float16 After Quantization",
+        "description": "Running OnnxFloatToFloat16 before INT8 quantization destroys the quantized graph. Apply FP16 after quantization only if you want a pure FP16 model, not a quantized one.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "order-optimize-first",
+        "title": "Graph Optimize Before Quantization",
+        "description": "Running OnnxModelOptimizer or OrtTransformersOptimization before quantization produces a cleaner graph and often improves quantized accuracy by fusing LayerNorm/Attention patterns.",
+        "source": "https://microsoft.github.io/Olive/"
+      }
+    ],
+    "lora": [
+      {
+        "id": "lora-base-frozen",
+        "title": "Base Model Frozen",
+        "description": "LoRA keeps the base model weights frozen and trains only low-rank adapter matrices. This means the base model can be quantized separately, but merging adapters into a quantized base model is non-trivial.",
+        "source": "https://microsoft.github.io/Olive/"
+      },
+      {
+        "id": "lora-rank",
+        "title": "Rank Selection",
+        "description": "Rank 8-16 works for simple tasks; 32-64 for domain adaptation; 128+ for large distribution shifts. Higher rank increases train memory and adapter size.",
+        "source": "empirical observation from community issues"
+      },
+      {
+        "id": "lora-qlora",
+        "title": "QLoRA + Quantization",
+        "description": "QLoRA uses a 4-bit base model for training. After training, export the adapter and merge with a non-quantized base before ONNX conversion if you need ONNX. Merging adapters into a 4-bit base is not supported by Olive.",
+        "source": "https://microsoft.github.io/Olive/"
+      }
+    ],
+    "hardware": [
+      {
+        "id": "ep-fallback",
+        "title": "Execution Provider Silent Fallback",
+        "description": "If an operator is not implemented for the requested EP, ONNX Runtime may silently fall back to CPUExecutionProvider, causing unexpected latency. Check EP-specific operator support and enable verbose logging.",
+        "source": "https://onnxruntime.ai/docs/execution-providers/"
+      },
+      {
+        "id": "qnn-whitelist",
+        "title": "QNN Operator Whitelist",
+        "description": "QNN only supports a subset of ONNX ops. LayerNorm, GELU, and some gather/reshape patterns may need replacement or partitioning. Use QNNPreprocess when available.",
+        "source": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html"
+      }
+    ],
+    "studio": [
+      {
+        "id": "studio-hfmodel-required",
+        "title": "HfModel for Hugging Face sources",
+        "description": "Olive 0.13+ rejects hf_config on PyTorchModel. Olive Studio must emit type HfModel with model_path set to the HF id for Hugging Face inputs.",
+        "source": "Olive Studio recipe builder"
+      },
+      {
+        "id": "studio-parse-apply",
+        "title": "Parse & Apply after pull",
+        "description": "Pull from GitHub and Microsoft Olive shortcuts only fill the JSON editor. Pipeline UI state updates after Parse & Apply.",
+        "source": "Olive Studio Input panel"
+      },
+      {
+        "id": "studio-applyable-flag",
+        "title": "Apply Fix needs applyable config",
+        "description": "Diagnose may return guidance-only Studio entries (applyable=false). Follow Recommended Fix text; Apply stays disabled until updated_config maps into UI state.",
+        "source": "Olive Studio MCP diagnostic"
+      },
+      {
+        "id": "studio-mcp-version-pin",
+        "title": "Pin mcp package below 2",
+        "description": "Olive MCP server imports mcp.server.fastmcp, which mcp 2.x removes. Install with mcp<2 in the same venv Olive Studio uses.",
+        "source": "Olive Studio AGENTS.md"
+      }
+    ]
+  }
+}

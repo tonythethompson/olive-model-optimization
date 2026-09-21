@@ -1,0 +1,815 @@
+{
+  "version": "0.3.3",
+  "last_updated": "2026-08-10",
+  "entries": [
+    {
+      "id": "onnx-export-shape",
+      "patterns": [
+        "dynamic shape",
+        "RuntimeError: Expected all tensors to be on the same device",
+        "The size of tensor a",
+        "shape mismatch",
+        " dimension"
+      ],
+      "title": "ONNX export shape mismatch",
+      "root_cause": "Input shapes or dynamic_axes are not correctly specified; or the model contains control flow that depends on runtime shape.",
+      "solution": "Add dynamic_axes to OnnxConversion for batch/sequence dims; trace with representative input shapes; replace data-dependent control flow with fixed-shape equivalents.",
+      "updated_config": {
+        "passes": {
+          "OnnxConversion": {
+            "params": {
+              "dynamic_axes": {
+                "input": {
+                  "0": "batch_size",
+                  "1": "sequence"
+                },
+                "output": {
+                  "0": "batch_size"
+                }
+              }
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "onnx-export-external-data",
+      "patterns": [
+        "external data",
+        "Protobuf size",
+        "2GB",
+        "Protocol message",
+        "too large"
+      ],
+      "title": "ONNX model exceeds 2GB",
+      "root_cause": "ONNX protobuf cannot store tensors larger than 2GB.",
+      "solution": "Enable use_external_data_format=True; Olive will write weights to a separate .onnx_data file.",
+      "updated_config": {
+        "passes": {
+          "OnnxConversion": {
+            "params": {
+              "use_external_data_format": true
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "quant-accuracy-collapse",
+      "patterns": [
+        "accuracy drop",
+        "perplexity",
+        "accuracy collapsed",
+        "INT8 accuracy",
+        "quantized model is wrong"
+      ],
+      "title": "Quantized model accuracy collapse",
+      "root_cause": "Calibration data is not representative, per-channel quantization is disabled for CNNs, or asymmetric scheme is used on an accelerator that requires symmetric.",
+      "solution": "Use 100-300 representative samples; enable per_channel=True for CNN/Linear layers; switch to symmetric quantization for QNN/CoreML; evaluate with a held-out set.",
+      "updated_config": {
+        "passes": {
+          "OnnxStaticQuantization": {
+            "params": {
+              "per_channel": true,
+              "calibration_sampling_size": 300,
+              "calibrate_method": "Entropy"
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "ep-fallback-cpu",
+      "patterns": [
+        "fallback",
+        "CPUExecutionProvider",
+        "not supported",
+        "op not implemented"
+      ],
+      "title": "Execution provider silent fallback to CPU",
+      "root_cause": "The requested execution provider does not implement one or more operators; ONNX Runtime falls back to CPU.",
+      "solution": "Check EP operator support; add OnnxModelOptimizer to fuse unsupported patterns; consider OnnxOpVersionConversion to a supported opset; enable verbose ORT logging.",
+      "updated_config": {
+        "passes": {
+          "OnnxModelOptimizer": {
+            "params": {
+              "graph_optimization_level": "all"
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "oom-quantization",
+      "patterns": [
+        "CUDA out of memory",
+        "OOM",
+        "out of memory",
+        "runtime error: out of memory"
+      ],
+      "title": "Out of memory during quantization or tuning",
+      "root_cause": "Calibration batch or intermediate tensors exceed GPU memory.",
+      "solution": "Reduce calibration_sampling_size and batch_size; move to CPU for calibration; use weight-only quantization; enable external data format for large models.",
+      "updated_config": {
+        "passes": {
+          "OnnxQuantization": {
+            "params": {
+              "calibration_sampling_size": 32
+            }
+          },
+          "OnnxConversion": {
+            "params": {
+              "use_external_data_format": true
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "calibration-data-mismatch",
+      "patterns": [
+        "calibration",
+        "dataloader",
+        "dataset",
+        "no data",
+        "data_config"
+      ],
+      "title": "Calibration data mismatch or missing",
+      "root_cause": "Static quantization requires a DataConfig with calibration samples that match the model input format and preprocessing.",
+      "solution": "Define a data_config with correct input_names, batching, and preprocessing; use representative samples from the inference distribution.",
+      "updated_config": {
+        "data_configs": {
+          "calibration_data": {
+            "type": "HuggingFaceContainer",
+            "load_dataset_config": {
+              "path": "<dataset>",
+              "split": "train",
+              "subset": "<subset>"
+            },
+            "pre_process_data_config": {
+              "input_cols": [
+                "text"
+              ],
+              "padding": "max_length",
+              "max_length": 512
+            },
+            "dataloader_config": {
+              "batch_size": 1,
+              "drop_last": false
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "lora-target-modules",
+      "patterns": [
+        "LoRA",
+        "target_modules",
+        "lora_rank",
+        "adapter",
+        "peft"
+      ],
+      "title": "LoRA target modules not found",
+      "root_cause": "target_modules do not match the model architecture (e.g. using q_proj/v_proj for a BERT model).",
+      "solution": "Inspect model keys and set target_modules correctly: Llama/Mistral use q_proj/k_proj/v_proj/o_proj; BERT uses query/key/value/dense.",
+      "updated_config": {
+        "passes": {
+          "LoRA": {
+            "params": {
+              "target_modules": [
+                "q_proj",
+                "v_proj"
+              ],
+              "lora_rank": 16,
+              "lora_alpha": 32
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "tensorrt-build-slow",
+      "patterns": [
+        "TensorRT",
+        "tensorrt",
+        "engine build",
+        "trt",
+        "build time"
+      ],
+      "title": "TensorRT engine build is very slow or fails",
+      "root_cause": "INT8 TensorRT requires per-engine calibration and explicit QDQ placement; dynamic shapes enlarge the search space.",
+      "solution": "Use static shapes where possible; pre-generate calibration cache; enable OnnxStaticQuantization with QDQ format before TensorRT; reuse engine files.",
+      "updated_config": {
+        "passes": {
+          "OnnxStaticQuantization": {
+            "params": {
+              "quant_format": "QDQ",
+              "per_channel": false
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "awq-slow-calibration",
+      "patterns": [
+        "AWQ",
+        "nvidia-modelopt",
+        "awq calibration",
+        "activation-aware"
+      ],
+      "title": "AWQ calibration is slow or hangs",
+      "root_cause": "AWQ scans weights and activations; large models or large calibration sets take time.",
+      "solution": "Reduce calibration iters to 32; use a small subset (128 samples); ensure GPU memory is available.",
+      "updated_config": {
+        "passes": {
+          "NVModelOptQuantization": {
+            "params": {
+              "algorithm": "awq",
+              "calibration_iters": 32,
+              "weight_bits": 4
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "qnn-layer-not-supported",
+      "patterns": [
+        "QNN",
+        "not supported",
+        "unsupported op",
+        "LayerNormalization",
+        "GELU"
+      ],
+      "title": "QNN reports unsupported operator",
+      "root_cause": "Qualcomm QNN has a limited op whitelist; LayerNorm and GELU are often unsupported.",
+      "solution": "Run QNNPreprocess before QNNQuantization; use OnnxModelOptimizer to fuse LayerNorm; consider replacing GELU with approximate ops if the model allows.",
+      "updated_config": {
+        "passes": {
+          "OnnxModelOptimizer": {
+            "params": {
+              "graph_optimization_level": "all"
+            }
+          },
+          "QNNPreprocess": {
+            "params": {}
+          },
+          "QNNQuantization": {
+            "params": {
+              "per_channel": true
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "coreml-dynamic-shape",
+      "patterns": [
+        "CoreML",
+        "dynamic shape",
+        "flexible shape",
+        "input shape"
+      ],
+      "title": "CoreML conversion fails with dynamic shapes",
+      "root_cause": "CoreML prefers fixed input shapes; dynamic batch or sequence length can fail.",
+      "solution": "Fix input shapes by removing dynamic_axes in OnnxConversion; use symbolic shape inference carefully.",
+      "updated_config": {
+        "passes": {
+          "OnnxConversion": {
+            "params": {
+              "dynamic_axes": {}
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "lora-merge-fail",
+      "patterns": [
+        "LoRA",
+        "merge",
+        "adapter",
+        "base model",
+        "merge_weights"
+      ],
+      "title": "LoRA adapter cannot be merged into quantized base",
+      "root_cause": "Merging adapters into a 4-bit or quantized base model is not supported by Olive.",
+      "solution": "Merge LoRA weights into the full-precision base model before ONNX conversion; then quantize the merged ONNX model.",
+      "updated_config": {
+        "passes": {
+          "LoRA": {
+            "params": {
+              "target_modules": [
+                "q_proj",
+                "v_proj"
+              ]
+            }
+          },
+          "ExtractLoRA": {
+            "params": {}
+          },
+          "OnnxConversion": {
+            "params": {}
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "openvino-fallback",
+      "patterns": [
+        "OpenVINO",
+        "fallback",
+        "CPUExecutionProvider",
+        "not supported"
+      ],
+      "title": "OpenVINO silently falls back to CPU EP",
+      "root_cause": "OpenVINO Execution Provider does not support some ops or data types.",
+      "solution": "Check OpenVINO operator support; use OnnxModelOptimizer to fuse unsupported patterns; convert to OpenVINO IR for broader op support.",
+      "updated_config": {
+        "passes": {
+          "OnnxModelOptimizer": {
+            "params": {
+              "graph_optimization_level": "all"
+            }
+          },
+          "OpenVINOConversion": {
+            "params": {
+              "fp16": true
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "transformer-fusion-missing-dims",
+      "patterns": [
+        "OrtTransformersOptimization",
+        "num_heads",
+        "hidden_size",
+        "fusion"
+      ],
+      "title": "Transformer optimization fails due to missing dims",
+      "root_cause": "OrtTransformersOptimization needs num_heads and hidden_size for attention fusion.",
+      "solution": "Set num_heads and hidden_size in pass params; verify against model config.",
+      "updated_config": {
+        "passes": {
+          "OrtTransformersOptimization": {
+            "params": {
+              "num_heads": 32,
+              "hidden_size": 4096,
+              "opt_level": 1
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "int4-perplexity",
+      "patterns": [
+        "int4",
+        "perplexity",
+        "quality",
+        "degradation"
+      ],
+      "title": "INT4 quantization causes large perplexity increase",
+      "root_cause": "INT4 weight quantization is aggressive; small models or sensitive layers suffer.",
+      "solution": "Use group size 128 or 64; exclude lm_head and embedding layers from quantization; try AWQ or GPTQ with larger group size.",
+      "updated_config": {
+        "passes": {
+          "NVModelOptQuantization": {
+            "params": {
+              "algorithm": "awq",
+              "weight_bits": 4,
+              "calibration_iters": 64
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "onnx-fp16-nan",
+      "patterns": [
+        "FP16",
+        "NaN",
+        "inf",
+        "OnnxFloatToFloat16",
+        "overflow"
+      ],
+      "title": "FP16 conversion produces NaN/Inf",
+      "root_cause": "Model activations exceed FP16 range or are not trained for FP16.",
+      "solution": "Keep I/O types float32; cast int inputs to int32; exclude sensitive ops from FP16; consider mixed precision.",
+      "updated_config": {
+        "passes": {
+          "OnnxFloatToFloat16": {
+            "params": {
+              "keep_io_types": true,
+              "cast_int_inputs_to_int32": true
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "calibration-distribution-mismatch",
+      "patterns": [
+        "calibration",
+        "distribution",
+        "domain shift",
+        "accuracy"
+      ],
+      "title": "Calibration data distribution mismatch",
+      "root_cause": "Calibration samples do not match inference inputs; quantization scale/zp are wrong.",
+      "solution": "Use production-like data; cover min/max sequence lengths and vocabulary; avoid synthetic or unrelated samples.",
+      "updated_config": {
+        "data_configs": {
+          "calibration_data": {
+            "type": "HuggingFaceContainer",
+            "load_dataset_config": {
+              "path": "<production-like-dataset>",
+              "split": "validation"
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "multi-pass-cache-overwrite",
+      "patterns": [
+        "cache",
+        "output",
+        "overwrite",
+        "same name"
+      ],
+      "title": "Multi-pass run overwrites intermediate outputs",
+      "root_cause": "Pass output names collide or cache_dir is shared across runs.",
+      "solution": "Set unique output_name per pass; use separate cache_dir per experiment; clean cache between unrelated runs.",
+      "updated_config": {
+        "engine": {
+          "cache_dir": "~/.cache/olive/experiment_1"
+        },
+        "passes": {
+          "OnnxConversion": {
+            "output_name": "onnx_model"
+          },
+          "OnnxQuantization": {
+            "output_name": "quant_model"
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "search-local-optima",
+      "patterns": [
+        "search",
+        "objective",
+        "local optima",
+        "latency vs accuracy"
+      ],
+      "title": "Search finds poor local optimum",
+      "root_cause": "Objective weights or search space are not tuned; evaluator is noisy with small sample size.",
+      "solution": "Fix seed for reproducibility; use larger calibration/evaluation sets; adjust objective weights; try bayesian or evolutionary search.",
+      "updated_config": {
+        "engine": {
+          "search_algorithm": "bayesian",
+          "search_strategy": {
+            "max_iterations": 20,
+            "seed": 42
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "torchscript-export-fail",
+      "patterns": [
+        "torchscript",
+        "jit",
+        "tracer",
+        " scripting"
+      ],
+      "title": "TorchScript export fails for a HuggingFace model",
+      "root_cause": "Many HF models use control flow or data-dependent shapes that TorchScript cannot trace.",
+      "solution": "Use OnnxConversion instead of TorchScript export; configure dynamic_axes for variable dimensions.",
+      "updated_config": {
+        "passes": {
+          "OnnxConversion": {
+            "params": {
+              "dynamic_axes": {
+                "input": {
+                  "0": "batch_size"
+                }
+              }
+            }
+          }
+        }
+      },
+      "domain": "olive",
+      "applyable": true
+    },
+    {
+      "id": "olive-module-not-found",
+      "domain": "olive",
+      "patterns": [
+        "No module named 'olive'",
+        "No module named olive",
+        "ModuleNotFoundError: olive",
+        "import olive"
+      ],
+      "title": "Olive Python package not installed in the active environment",
+      "root_cause": "The process running the recipe cannot import olive (wrong venv or missing pip install).",
+      "solution": "Activate the Olive Studio / project .venv and pip install olive-ai (or the Olive extras your recipe needs). Re-run Execute Live from the app so it uses that interpreter.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-ort-cuda-ep-missing",
+      "domain": "olive",
+      "patterns": [
+        "CUDAExecutionProvider is not available",
+        "CUDAExecutionProvider' is not in",
+        "available providers",
+        "onnxruntime-gpu"
+      ],
+      "title": "ONNX Runtime CUDA EP missing from Python environment",
+      "root_cause": "CPU-only onnxruntime is installed, or GPU EP was not built into the wheel.",
+      "solution": "Install onnxruntime-gpu matching your CUDA tag in the same venv Olive uses. Confirm with python -c \"import onnxruntime as ort; print(ort.get_available_providers())\".",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-hf-auth-401",
+      "domain": "olive",
+      "patterns": [
+        "401 Client Error",
+        "Repository Not Found",
+        "gated repo",
+        "huggingface_hub.utils._errors",
+        "HF_TOKEN"
+      ],
+      "title": "Hugging Face Hub authentication or gated model failure",
+      "root_cause": "Model is gated/private or HF token is missing/invalid in the Olive process environment.",
+      "solution": "Run huggingface-cli login or set HF_TOKEN for the Olive Studio server process. Accept the model license on huggingface.co, then retry.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-model-path-missing",
+      "domain": "olive",
+      "patterns": [
+        "FileNotFoundError",
+        "model_path",
+        "No such file or directory",
+        "cannot find the model",
+        "local model path"
+      ],
+      "title": "Model path does not exist on disk",
+      "root_cause": "input_model.config.model_path points to a missing local file/folder or an unresolved HF cache path.",
+      "solution": "Verify the local path in Olive Studio Input, or switch to a Hugging Face id that can be downloaded. Clear stale relative paths.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-disk-full",
+      "domain": "olive",
+      "patterns": [
+        "No space left on device",
+        "errno 28",
+        "OSError: [Errno 28]",
+        "disk quota exceeded"
+      ],
+      "title": "Disk full during Olive export or cache write",
+      "root_cause": "ONNX external data, cache_dir, or Hugging Face downloads filled the volume.",
+      "solution": "Free disk space; point cache_dir to a larger volume; enable use_external_data_format only when needed and clean old experiment caches.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-cudnn-cuda-mismatch",
+      "domain": "olive",
+      "patterns": [
+        "cudnn",
+        "CUDA driver version is insufficient",
+        "Could not load library cudnn",
+        "cudaErrorInsufficientDriver",
+        "libcudart"
+      ],
+      "title": "CUDA / cuDNN driver mismatch for Olive GPU run",
+      "root_cause": "Installed CUDA wheels expect a newer driver or cuDNN libraries are missing from PATH.",
+      "solution": "Upgrade the NVIDIA driver, match Olive Studio CUDA tag (cu121/cu124/\u2026) to the wheel set, or fall back to CPUExecutionProvider for a smoke test.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-safetensors-missing",
+      "domain": "olive",
+      "patterns": [
+        "safetensors",
+        "pytorch_model.bin",
+        "model.safetensors.index.json",
+        "Unable to load weights",
+        "does not appear to have a file named",
+        "Can't load the model for",
+        "Unable to locate the model weights"
+      ],
+      "title": "Model weight files missing or incomplete download",
+      "root_cause": "HF cache is incomplete or the repo uses a weight layout Olive/transformers cannot load.",
+      "solution": "Re-download the model (huggingface-cli download). Prefer repos with model.safetensors. Clear partial cache folders and retry.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-bitsandbytes-cuda",
+      "domain": "olive",
+      "patterns": [
+        "bitsandbytes",
+        "CUDA Setup failed",
+        "libbitsandbytes",
+        "BNB_CUDA"
+      ],
+      "title": "bitsandbytes CUDA setup failed",
+      "root_cause": "QLoRA / 4-bit load paths need a working bitsandbytes build matching the GPU toolchain.",
+      "solution": "Install a CUDA-capable bitsandbytes wheel for your platform, or disable QLoRA and use full-precision LoRA / GPTQ-AWQ paths that do not need BNB.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-triton-missing",
+      "domain": "olive",
+      "patterns": [
+        "No module named 'triton'",
+        "triton is not available",
+        "triton.language",
+        "Requires triton"
+      ],
+      "title": "Triton dependency missing for an Olive GPU pass",
+      "root_cause": "Some quant/optim kernels import triton; Windows or CPU-only envs often lack it.",
+      "solution": "Install triton where supported, switch to a pass that does not require it, or run calibration on a Linux CUDA machine.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-ssl-huggingface",
+      "domain": "olive",
+      "patterns": [
+        "SSLCertVerificationError",
+        "CERTIFICATE_VERIFY_FAILED",
+        "Max retries exceeded with url",
+        "HTTPSConnectionPool"
+      ],
+      "title": "TLS/SSL failure downloading models or Olive assets",
+      "root_cause": "Corporate proxy, custom CA, or broken cert store blocks huggingface.co / azure downloads.",
+      "solution": "Configure REQUESTS_CA_BUNDLE / SSL_CERT_FILE for the Olive process, or pre-download models on a machine with working TLS and point model_path at the local folder.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-pass-config-validation",
+      "domain": "olive",
+      "patterns": [
+        "ValidationError",
+        "pydantic",
+        "extra fields not permitted",
+        "field required",
+        "Input should be"
+      ],
+      "title": "Olive pass config failed schema validation",
+      "root_cause": "Recipe pass params do not match the installed Olive version (renamed/removed keys).",
+      "solution": "Compare pass params with Olive docs for your version; remove unknown keys; rebuild from Olive Studio UI defaults then re-apply advanced overrides carefully.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-accelerator-device-busy",
+      "domain": "olive",
+      "patterns": [
+        "CUDA error: all CUDA-capable devices are busy",
+        "hipError",
+        "device already in use",
+        "cudaErrorDevicesUnavailable"
+      ],
+      "title": "GPU device busy or unavailable to Olive",
+      "root_cause": "Another process holds the GPU, or CUDA_VISIBLE_DEVICES hides all devices.",
+      "solution": "Stop competing GPU jobs; check CUDA_VISIBLE_DEVICES; retry with a smaller calibration batch or CPU fallback for conversion-only steps.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-directml-ep-missing",
+      "domain": "olive",
+      "patterns": [
+        "DmlExecutionProvider",
+        "DirectMLExecutionProvider",
+        "onnxruntime-directml",
+        "DirectML is not supported",
+        "Failed to create DirectML"
+      ],
+      "title": "DirectML execution provider not available to Olive",
+      "root_cause": "Olive/ORT process lacks onnxruntime-directml, or the host is not Windows with DirectX 12.",
+      "solution": "On Windows install onnxruntime-directml into the Olive environment; select DmlExecutionProvider. Do not expect DirectML on Linux/macOS or from CUDA-only ORT wheels.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-webgpu-not-server-ort",
+      "domain": "olive",
+      "patterns": [
+        "WebGpuExecutionProvider",
+        "WebGPU",
+        "webgpu provider",
+        "ORT Web"
+      ],
+      "title": "WebGPU is not a server-side ONNX Runtime EP for Olive CLI",
+      "root_cause": "WebGpuExecutionProvider is for ONNX Runtime Web in browsers. Desktop/server Olive runs do not execute WebGPU the same way.",
+      "solution": "Build/export an ONNX recipe (prefer FP16) for browser ORT Web. For local Olive execution pick CUDA, TensorRT, DirectML, OpenVINO, or CPU instead.",
+      "updated_config": {},
+      "applyable": false
+    },
+    {
+      "id": "olive-hf-trust-remote-code",
+      "domain": "olive",
+      "olive_versions": ">=0.13.0",
+      "patterns": [
+        "trust_remote_code",
+        "requires you to execute the configuration file",
+        "requires you to execute the modeling file",
+        "has custom code which must be executed",
+        "Loading .* requires you to execute",
+        "ValueError: Loading .* requires"
+      ],
+      "title": "HuggingFace model fails to load after upgrading to olive-ai 0.13.0",
+      "root_cause": "Olive 0.13.0 changed the default value of trust_remote_code from true to false for security. Models with custom code (e.g., Phi, Mistral with custom RoPE, Qwen) now refuse to load unless explicitly opted in.",
+      "solution": "In Olive Studio, open the Hugging Face source settings and enable Trust Remote Code. Enabling this executes Python from the model repository inside the Olive process on your machine, so only enable it for repositories you trust. Do not use Apply Fix for this setting; it must be toggled manually.",
+      "updated_config": {
+        "input_model": {
+          "config": {
+            "trust_remote_code": true
+          }
+        }
+      },
+      "applyable": false
+    },
+    {
+      "id": "olive-qairt-passes-removed",
+      "domain": "olive",
+      "olive_versions": ">=0.13.0",
+      "patterns": [
+        "QairtPreparation",
+        "QairtGenAIBuilder",
+        "pass not found",
+        "unknown pass type",
+        "qairt_preparation",
+        "qairt_genai_builder"
+      ],
+      "title": "QairtPreparation or QairtGenAIBuilder pass not found in olive-ai 0.13.0",
+      "root_cause": "The QairtPreparation and QairtGenAIBuilder passes were superseded by the unified QairtPipeline pass in olive-ai 0.13.0. Recipes referencing the old pass names will fail.",
+      "solution": "Replace QairtPreparation and QairtGenAIBuilder with a single QairtPipeline pass. QairtPipeline combines model loading, quantization, and compilation into one YAML-recipe-driven step.",
+      "updated_config": {
+        "passes": {
+          "QairtPipeline": {
+            "params": {}
+          }
+        }
+      },
+      "applyable": false
+    }
+  ]
+}

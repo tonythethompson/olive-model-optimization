@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "generator_version": "0.5.0",
+  "source_timestamp": "2026-08-12T21:00:51Z",
+  "changed_files": [
+    "olive_mcp_server/knowledge_base/update_report.json",
+    "olive_mcp_server/knowledge_base/candidate_quirks.json"
+  ],
+  "runs": {
+    "update_kb": {
+      "generator": "update_kb",
+      "generator_version": "0.5.0",
+      "source_timestamp": "2026-08-12T21:00:51Z",
+      "source_fingerprint": "a999b458d68f5c04c73a27e292581597f70771a7ee021920078c894d9e22ca24",
+      "changed_files": [
+        "olive_mcp_server/knowledge_base/update_report.json",
+        "olive_mcp_server/knowledge_base/candidate_quirks.json"
+      ],
+      "success": true
+    },
+    "expand_kb": {
+      "generator": "expand_kb",
+      "generator_version": "0.5.0",
+      "source_timestamp": "2026-08-10",
+      "source_fingerprint": "82cb7fa416972738ead685208797666c4f9768980695dda801876bfa8da1cfaa",
+      "changed_files": [],
+      "success": true
+    }
+  }
+}

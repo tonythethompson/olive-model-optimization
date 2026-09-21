@@ -1,0 +1,186 @@
+{
+  "version": "0.1.0",
+  "last_updated": "2026-08-13",
+  "description": "Decision tree for execution provider selection. Used by MCP tools to recommend the appropriate EP based on hardware, model characteristics, and workflow requirements.",
+  "guidance": [
+    {
+      "category": "amd_datacenter",
+      "title": "MIGraphX vs ROCm (AMD Instinct Datacenter GPUs)",
+      "providers": ["MIGraphXExecutionProvider", "ROCMExecutionProvider"],
+      "decision_criteria": {
+        "primary_factor": "operator_coverage",
+        "secondary_factors": ["model_complexity", "control_flow", "custom_ops"]
+      },
+      "when_to_use": {
+        "MIGraphXExecutionProvider": [
+          "Targeting AMD Instinct datacenter GPUs (MI200/MI300/MI325X/MI350X/MI355X)",
+          "Model operators are within MIGraphX coverage (standard CNNs, transformers with supported ops)",
+          "Workload benefits from graph-level compilation and fusion (similar role to TensorRT)",
+          "Maximum throughput is the primary goal on AMD Instinct hardware",
+          "Model uses standard ONNX operators: Conv, Gemm, Attention, LayerNormalization, MatMul"
+        ],
+        "ROCMExecutionProvider": [
+          "Models use custom operators not in MIGraphX operator subset",
+          "Models rely on dynamic control flow or sequence-length-dependent branching",
+          "Operators fall outside MIGraphX's supported set",
+          "Need a generic GPU fallback when MIGraphX compilation fails",
+          "Targeting consumer Radeon GPUs (RDNA architecture) where MIGraphX is not available"
+        ]
+      },
+      "when_not_to_use": {
+        "MIGraphXExecutionProvider": [
+          "Consumer Radeon GPUs (RX 6000/7000/9000 RDNA) — MIGraphX requires Instinct CDNA hardware",
+          "Models with heavy custom operators or dynamic control flow",
+          "Platforms other than Linux x86_64 with ROCm stack"
+        ],
+        "ROCMExecutionProvider": [
+          "When MIGraphX is available and the model fits within its operator coverage — MIGraphX provides superior throughput via graph compilation"
+        ]
+      },
+      "notes": "MIGraphX provides graph-level compilation (analogous to TensorRT for NVIDIA) for maximum throughput on AMD Instinct. ROCm EP is a generic fallback that executes operators individually without whole-graph optimization. When MIGraphX encounters unsupported operators, it automatically falls back to ROCMExecutionProvider or CPUExecutionProvider for those specific ops.",
+      "related_profiles": ["AMD Instinct MI300X", "AMD Instinct MI325X", "AMD Instinct MI350X", "AMD Instinct MI355X"]
+    },
+    {
+      "category": "intel_cpu",
+      "title": "oneDNN vs OpenVINO vs CPU (Intel CPU Inference)",
+      "providers": ["DnnlExecutionProvider", "OpenVINOExecutionProvider", "CPUExecutionProvider"],
+      "decision_criteria": {
+        "primary_factor": "optimization_stack_availability",
+        "secondary_factors": ["installation_complexity", "deployment_requirements", "operator_coverage"]
+      },
+      "when_to_use": {
+        "OpenVINOExecutionProvider": [
+          "Full Intel optimization stack is available (OpenVINO plugin installed)",
+          "Production Intel deployments requiring maximum performance",
+          "Targeting Intel iGPU, NPU, or CPU with IR-level optimizations",
+          "Need OpenVINO-specific graph transformations and layer fusion"
+        ],
+        "DnnlExecutionProvider": [
+          "Want lighter-weight Intel CPU optimization without installing the OpenVINO plugin",
+          "Using the default ORT wheel which bundles oneDNN (zero additional setup)",
+          "Simpler deployment without the OpenVINO dependency chain",
+          "Intel CPU with AVX2 (minimum) or AVX-512/AMX (recommended) instruction sets",
+          "Workload is CPU-bound and benefits from optimized DNNL kernels"
+        ],
+        "CPUExecutionProvider": [
+          "Last resort when neither OpenVINO nor oneDNN is available",
+          "Non-Intel CPUs where oneDNN provides no benefit",
+          "Maximum compatibility with no EP-specific requirements",
+          "Simple baseline for correctness testing"
+        ]
+      },
+      "when_not_to_use": {
+        "OpenVINOExecutionProvider": [
+          "When avoiding extra plugin installation is a priority",
+          "When the OpenVINO plugin is not available for the target platform"
+        ],
+        "DnnlExecutionProvider": [
+          "When OpenVINO is already installed and configured — OpenVINO is the preferred production choice",
+          "On non-Intel CPUs (AMD, ARM) where oneDNN provides no benefit",
+          "When using onnxruntime-gpu or platform-specific ORT builds that strip CPU-only EPs"
+        ],
+        "CPUExecutionProvider": [
+          "When any hardware-optimized EP (OpenVINO, oneDNN) is available — always prefer optimized EPs"
+        ]
+      },
+      "notes": "OpenVINO is the recommended EP for production Intel deployments (requires separate plugin install). oneDNN (DNNL) is bundled in the default onnxruntime pip wheel — zero setup, lighter-weight optimization. Use CPU EP only as a last resort. When both OpenVINO and oneDNN are detected, OpenVINO should be ranked higher in recommendations.",
+      "related_profiles": ["Intel Core i9 CPU", "Intel Core (oneDNN)", "Intel iGPU / OpenVINO"]
+    },
+    {
+      "category": "qualcomm_snapdragon",
+      "title": "QNN Plugin vs QNN ABI (Qualcomm Snapdragon NPU)",
+      "providers": ["QNNExecutionProvider", "QnnAbiExecutionProvider"],
+      "decision_criteria": {
+        "primary_factor": "workflow_complexity",
+        "secondary_factors": ["project_maturity", "deployment_model", "troubleshooting_needs"]
+      },
+      "when_to_use": {
+        "QNNExecutionProvider": [
+          "Need fine-grained multi-pass control over the optimization pipeline (OnnxConversion → quantization → QNN compilation separately)",
+          "Integrating with existing multi-step Qualcomm workflows",
+          "Troubleshooting individual pass failures in a complex pipeline",
+          "Need to apply custom quantization or preprocessing between pipeline stages",
+          "Working with models that require special handling at specific pipeline stages"
+        ],
+        "QnnAbiExecutionProvider": [
+          "New (greenfield) Snapdragon projects targeting Snapdragon 8 Gen 2/3+",
+          "Want single-binary deployment — model compiled directly to a context binary in one pass",
+          "Prefer simpler workflow with fewer pipeline stages",
+          "Targeting QairtPipeline for single-pass LLM quantization and compilation",
+          "Windows ARM64 for on-device NPU inference or Windows x64 for ahead-of-time context-binary preparation"
+        ]
+      },
+      "when_not_to_use": {
+        "QNNExecutionProvider": [
+          "New projects where the simpler QairtPipeline workflow suffices",
+          "When single-binary deployment is the goal (QNN ABI is more streamlined for this)"
+        ],
+        "QnnAbiExecutionProvider": [
+          "Existing pipelines that rely on individual pass configuration or mixed-pass optimization",
+          "When you need to inspect or modify intermediate artifacts between pipeline stages",
+          "Legacy Snapdragon targets predating the QNN ABI runtime"
+        ]
+      },
+      "notes": "QNN (standard plugin) uses a multi-pass workflow: OnnxConversion → quantization → QNN compilation. This gives maximum control but more complexity. QNN ABI (QairtPipeline) compiles the model directly to a context binary in one pass — simpler workflow, preferred for fresh greenfield projects targeting Snapdragon 8 Gen 2/3+. The ABI path is newer (olive-ai 0.13.0+) and provides a more streamlined deployment experience.",
+      "related_profiles": ["Qualcomm Snapdragon NPU", "Qualcomm Snapdragon QNN ABI"]
+    },
+    {
+      "category": "amd_consumer_vs_datacenter",
+      "title": "ROCm on Consumer Radeon vs Instinct (AMD GPU Tiers)",
+      "providers": ["ROCMExecutionProvider", "MIGraphXExecutionProvider"],
+      "decision_criteria": {
+        "primary_factor": "gpu_tier",
+        "secondary_factors": ["rocm_support_level", "operator_coverage", "quantization_method"]
+      },
+      "when_to_use": {
+        "ROCMExecutionProvider_consumer": [
+          "Consumer Radeon RX 6000/7000/9000 series GPUs (RDNA architecture)",
+          "Community-maintained ROCm builds are available and working",
+          "Model fits within narrower consumer RDNA operator coverage",
+          "GPTQ quantization (preferred over AWQ on RDNA due to better compatibility)",
+          "VRAM budget of 12-16 GB (typical consumer GPU memory)"
+        ],
+        "ROCMExecutionProvider_datacenter": [
+          "AMD Instinct MI-series GPUs (CDNA architecture)",
+          "Full vendor-supported ROCm stack is available",
+          "Broader operator coverage including MIGraphX graph compilation",
+          "Both AWQ and GPTQ quantization methods are supported",
+          "Large VRAM budgets (64-288 GB on Instinct cards)"
+        ]
+      },
+      "when_not_to_use": {
+        "ROCMExecutionProvider_consumer": [
+          "When AWQ quantization is required — AWQ has limited support on RDNA and may produce incorrect results",
+          "Models requiring mixed-precision FP16 accumulation (unsupported on consumer RDNA)",
+          "Workloads requiring structured 2:4 sparsity (unavailable on non-CDNA architectures)",
+          "Models exceeding 7B parameters on 16 GB VRAM cards with GPTQ INT4"
+        ],
+        "ROCMExecutionProvider_datacenter": [
+          "Prefer MIGraphXExecutionProvider when model operators are within MIGraphX coverage — graph compilation provides superior throughput"
+        ]
+      },
+      "quantization_guidance": {
+        "consumer_radeon_rdna": {
+          "preferred": "GPTQ",
+          "reason": "Better ROCm operator coverage on RDNA; AWQ has known compatibility gaps",
+          "recommended_config": {
+            "method": "GptqQuantizer",
+            "bits": 4,
+            "group_size": 128
+          }
+        },
+        "instinct_cdna": {
+          "preferred": "AWQ or GPTQ",
+          "reason": "Full operator support on CDNA; both methods work well with MIGraphX compilation",
+          "recommended_config": {
+            "method": "AutoAWQQuantizer or GptqQuantizer",
+            "bits": 4,
+            "group_size": 128
+          }
+        }
+      },
+      "notes": "Consumer Radeon (RX 6000/7000/9000 RDNA) has limited ROCm support with community-maintained builds and narrower operator coverage. Prefer GPTQ over AWQ on RDNA due to known AWQ compatibility gaps. Instinct (MI-series CDNA) has the full vendor-supported ROCm stack, MIGraphX graph compilation, and broader operator coverage. RDNA 4 (gfx12, RX 9000 series) has experimental ROCm support status.",
+      "related_profiles": ["AMD Radeon RX 9070 XT", "AMD Radeon RX 9070", "AMD Radeon RX Consumer / ROCm", "AMD Instinct MI300X", "AMD Instinct MI325X", "AMD Instinct MI350X", "AMD Instinct MI355X"]
+    }
+  ]
+}

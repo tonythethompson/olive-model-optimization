@@ -1,0 +1,36 @@
+{
+  "stem": "ts_studio",
+  "kind": "entries",
+  "model": "BAAI/bge-small-en-v1.5",
+  "dim": 384,
+  "count": 12,
+  "content_hash": "36dcdf321ad6d99545edfbc4a9dea97d26e106de1ddcc2da7d7faa785a894c50",
+  "entry_ids": [
+    "studio-pytorch-hf-config",
+    "studio-apply-fix-empty",
+    "studio-venv-mcp-pin",
+    "studio-ai-provider-inactive",
+    "studio-diagnose-wiring",
+    "studio-tensorrt-pip-invalid-requirement",
+    "studio-recipe-not-parsed",
+    "studio-unique-cache-dir",
+    "studio-tensorrt-rtx-missing",
+    "studio-directml-missing",
+    "studio-webgpu-local-blocked",
+    "studio-openvino-npu-device"
+  ],
+  "embed_texts": [
+    "Recipe used hf_config on PyTorchModel (Olive Studio builder) Older Olive Studio recipes emitted type PyTorchModel with hf_config. Olive 0.13+ PyTorchModelHandler rejects hf_config; Hugging Face sources must use HfModel. Rebuild the recipe in Olive Studio (Input → Parse & Apply or re-enable passes). Current Studio builders emit HfModel for Hugging Face IDs. If you imported raw JSON, change input_model.type to HfModel and keep model_path as the HF id. hf_config unexpected keyword argument 'hf_config' unexpected keyword argument \"hf_config\" PyTorchModelHandler PyTorchModel",
+    "Apply Fix or chat Apply did not change pipeline state The diagnostic had no mappable updated_config (applyable=false), or the patch keys are not in Olive Studio's UI mapping (for example data_configs-only remedies). Follow the Recommended Fix text manually. For calibration data_configs, set Dataset / user script in Input. For chat suggestions, use Apply only when an action card is shown; plain advice has no patch. Apply Fix no auto-applyable updated_config Fix Applied Apply did nothing",
+    "Olive MCP package missing or mcp 2.x broke FastMCP import Olive Studio's MCP server needs mcp<2 (FastMCP lives under mcp.server.fastmcp in 1.x). Wrong venv or mcp 2.x removes that path. In olive-mcp-server: pip install -e \".[dev]\" \"mcp<2\". Restart the MCP / app process. Prefer the project .venv used by Olive Studio. mcp.server.fastmcp No module named 'mcp' mcp<2 ModuleNotFoundError: mcp cannot import name FastMCP",
+    "Assistant provider not active in Olive Studio Chat/Audit call the server AI runtime. Downloading a local model does not switch Active Provider until Settings saves the provider/model. Open Assistant → Settings, select the provider (Ollama, OpenRouter, …), pick/load the model, Save. Confirm the sidebar header shows the active provider. No AI provider configured Active Provider provider not set Load model Ollama Assistant → Settings",
+    "Diagnose could not reach Olive MCP tools Olive Studio proxies Diagnose through POST /api/mcp/tool → olive_mcp_server.call_tool. Missing package install, wrong Python, or an unknown tool name yields empty/failed diagnosis. Install olive-mcp-server into the app .venv (pip install -e olive-mcp-server \"mcp<2\"). Restart pnpm dev. Re-run Diagnose; you should see title/root_cause from the KB. Unknown tool: call_tool Diagnosis failed Diagnosis returned an unexpected /api/mcp/tool olive_mcp_server",
+    "TensorRT install used a bare version pin Olive Studio Hardware install must pass a package name (for example tensorrt==…) not a lone ==version string. Use Hardware → Install for TensorRT / TensorRT RTX, or pip install tensorrt==<version> / tensorrt-rtx explicitly in the app .venv. Retry after a successful install. Invalid requirement ==10.9.0.34",
+    "Pulled recipe JSON did not update the pipeline UI Olive Studio GitHub shortcuts and Pull from GitHub load JSON into the Editor tab only. Pipeline toggles change after Parse & Apply. Open the Editor tab, confirm the JSON, then click Parse & Apply. Shortcuts intentionally do not auto-apply. Parse & Apply JSON editor Pull from GitHub shortcut recipe not applied",
+    "Isolate Olive Studio cache directory for this experiment Shared cache_dir across experiments can make multi-pass outputs hard to reason about in Studio. Set a unique cache directory in Infrastructure / workspace settings, then re-run. cache_dir Olive Studio cache experiment cache intermediate overwrite",
+    "TensorRT RTX execution provider not registered Consumer TensorRT RTX path needs both the tensorrt-rtx package and a matching ONNX Runtime EP-ABI plugin build, not the full nvinfer TensorRT SDK. Missing install or SM < 7.5 leaves NvTensorRTRTXExecutionProvider unregistered. Install both tensorrt-rtx and the matching ONNX Runtime EP-ABI plugin (Hardware → Install TensorRT RTX, or pip in the app venv). Requires NVIDIA GPU SM ≥ 7.5 (Turing+). Verify NvTensorRTRTXExecutionProvider appears in onnxruntime.get_available_providers(). Prefer AWQ INT4 (NVModelOpt) over PTQ INT8/QDQ for this EP. Restart the app after install. NvTensorRTRTXExecutionProvider tensorrt-rtx TensorRT RTX TensorRT RTX not registered NvTensorRTRTX",
+    "DirectML execution provider missing or wrong venv DirectML requires Windows 10/11 + DirectX 12 and onnxruntime-directml in the default-family venv. CUDA/GPU ORT wheels do not expose DmlExecutionProvider. On Windows, install onnxruntime-directml into the Olive Studio default venv (Hardware → DirectML or pip). Do not mix CUDA/TRT packages into the DirectML EP path. Non-Windows hosts cannot run DirectML. DmlExecutionProvider DirectMLExecutionProvider onnxruntime-directml DirectML DirectML EP",
+    "WebGPU is browser-only — local Execute Live blocked WebGpuExecutionProvider targets ONNX Runtime Web in the browser. Olive Studio marks WebGPU recipes non-runnable locally (isRunnable: false / localExecutionIssues). Use Export recipe / download ONNX for in-browser ORT Web WebGPU. Prefer FP16 (OnnxFloatToFloat16). Do not expect Execute Live or local Olive CLI to run WebGPU. WebGpuExecutionProvider WebGPU webgpu ORT Web WebGPU browser WebGPU",
+    "OpenVINO NPU needs target device NPU (not EP rename) Intel NPU still uses OpenVINOExecutionProvider. The device is selected separately via openvinoTargetDevice (or equivalent). Without device=NPU and the OpenVINO NPU driver, work stays on CPU. In Olive Studio set OpenVINO target device to NPU. Install the OpenVINO NPU driver on Intel Core Ultra / Meteor Lake+. Prefer OpenVINO weight-compression or INT8 paths; verify unsupported ops are not silently falling back to CPU. OpenVINO NPU device NPU openvinoTargetDevice\": \"NPU\" openvinoTargetDevice: NPU Core Ultra NPU device=NPU"
+  ]
+}

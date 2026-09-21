@@ -1,0 +1,2916 @@
+{
+  "version": "0.4.0",
+  "last_updated": "2026-08-10",
+  "olive_version_support": {
+    "min": "0.12.0",
+    "max": "0.13.0"
+  },
+  "models": [
+    {
+      "model": "Mistral 7B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/mistral",
+      "verified": true,
+      "notes": "Olive ships a Mistral example; prefer NVModelOpt/AWQ on NVIDIA over plain INT8 QDQ for generation quality.",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export with dynamic_axes for batch/sequence; use_external_data_format for >2GB weights.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 can drop 10-15% perplexity; prefer NVModelOpt AWQ int4.",
+            "typical_accuracy_drop": "1-3% with AWQ",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "Best path for NVIDIA; AWQ int4 via TensorRT Model Optimizer.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "AutoAWQQuantizer": {
+            "support": "supported",
+            "olive_pass": "AutoAWQQuantizer",
+            "note": "PyTorch-side AWQ before ONNX export; documented Olive LLM quant path.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "LoRA": {
+            "support": "warning",
+            "olive_pass": "LoRA",
+            "note": "ONNX limitation: re-export base model after adapter merge.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 halves VRAM; keep I/O float32 if consumers expect FP32.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "OnnxQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxQuantization",
+            "note": "15GB+ model; needs aggressive pruning or int4 before QNN.",
+            "typical_accuracy_drop": "5-10%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "QNNPreprocess": {
+            "support": "supported",
+            "olive_pass": "QNNPreprocess",
+            "note": "Required preprocess for ops not natively on QNN.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "Use int4 weights (w4a8) and verify op whitelist.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU export works; large weights need external data format.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxBlockWiseRtnQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxBlockWiseRtnQuantization",
+            "note": "RTN int4 is fast for CPU footprint; validate perplexity.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOWeightCompression": {
+            "support": "supported",
+            "olive_pass": "OpenVINOWeightCompression",
+            "note": "INT4/INT8 weight compression for low-memory CPU.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Phi-3-mini",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/phi2",
+      "verified": true,
+      "notes": "Phi family is covered by Olive phi examples and NVModelOpt/ORT quant paths; Phi-3-mini is small enough for stable INT8.",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export with dynamic_axes for batch and sequence.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 QDQ works well; TensorRT recommended.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 is stable for Phi-class models in Olive examples.",
+            "typical_accuracy_drop": "<1.5%",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/phi2",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is the default GPU path for small Phi models.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quant with calibration is stable for Phi-3-mini.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxBlockWiseRtnQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxBlockWiseRtnQuantization",
+            "note": "INT4 block-wise RTN for low-memory CPU (same path as Phi-4 recipe).",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "NVIDIA TensorRT RTX": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export for NvTensorRTRTXExecutionProvider via the tensorrt-rtx package, which installs the standalone TensorRT RTX EP-ABI provider library for ONNX Runtime 1.23+ (SM≥7.5 Turing+; not the full nvinfer TensorRT SDK).",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "Prefer AWQ INT4 for tensorrt-rtx (SM≥7.5); PTQ INT8/QDQ is a poor fit on this EP.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "AutoAWQQuantizer": {
+            "support": "supported",
+            "olive_pass": "AutoAWQQuantizer",
+            "note": "PyTorch-side AWQ INT4 before ONNX export; preferred over PTQ INT8/QDQ for TRT RTX (SM≥7.5, tensorrt-rtx).",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 conversion after AWQ export when the EP path needs half-precision activations/weights.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export graph cleanup before NvTensorRTRTXExecutionProvider deployment.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "ResNet-50",
+      "frameworks": [
+        "PyTorch",
+        "ONNX"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/resnet",
+      "verified": true,
+      "notes": "Canonical Olive CNN example; static INT8 PTQ is highly stable.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Fixed 1x3x224x224 I/O; target_opset 14+.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/resnet",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quantization is highly stable for CNNs.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-quant graph cleanup used in Olive ResNet recipes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "IncStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "IncStaticQuantization",
+            "note": "Intel Neural Compressor static INT8 is a strong CPU alternative.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOConversion",
+            "note": "OpenVINO IR conversion for Intel CPU/iGPU.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/OpenVINO-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OpenVINOQuantization": {
+            "support": "supported",
+            "olive_pass": "OpenVINOQuantization",
+            "note": "OpenVINO INT8 for vision CNNs.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNConversion": {
+            "support": "supported",
+            "olive_pass": "QNNConversion",
+            "note": "Convert ONNX to QNN context for NPU.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "Per-channel symmetric required; typical ImageNet drop <1%.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "NVIDIA T4": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "FP16 TensorRT path after conversion.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 QDQ for TensorRT EP on T4.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is standard for ResNet on GPU.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Windows DirectML GPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "ONNX export for DmlExecutionProvider; requires Windows + onnxruntime-directml (not Linux/macOS CUDA wheels).",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 PTQ is the preferred DirectML path for CNNs; validate op coverage vs CUDA. Windows + onnxruntime-directml only.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is a strong DirectML alternative when INT8 coverage is incomplete; Windows + onnxruntime-directml only.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export graph cleanup before DmlExecutionProvider deployment.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxKquantQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxKquantQuantization",
+            "note": "K-quant is CPU/CUDA-only in Studio validation; DirectML recipes should use AWQ or PTQ instead.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QuantizeEmbeddingInt8": {
+            "support": "supported",
+            "olive_pass": "QuantizeEmbeddingInt8",
+            "note": "Graph surgery for INT8 embedding quantization on DirectML.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "ShareEmbeddingLmHead": {
+            "support": "supported",
+            "olive_pass": "ShareEmbeddingLmHead",
+            "note": "Graph surgery to share embedding and LM-head weights on DirectML.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "WebGPU (Browser)": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export ONNX for in-browser ORT Web WebGPU; not a local Olive CLI run target.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/WebGPU-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "Prefer FP16 for browser WebGPU; INT8 support varies by browser/GPU. Local Olive Execute Live is blocked.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export cleanup for browser ORT Web; not executed via local Olive CLI.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core Ultra NPU (OpenVINO)": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Convert then target OpenVINO EP with device=NPU (openvinoTargetDevice=NPU).",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/OpenVINO-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Optional graph cleanup before OpenVINO IR conversion for NPU.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOConversion",
+            "note": "OpenVINO IR path for Intel NPU (openvinoTargetDevice=NPU); requires NPU driver on Core Ultra / Meteor Lake+.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOQuantization": {
+            "support": "supported",
+            "olive_pass": "OpenVINOQuantization",
+            "note": "Preferred INT8 path for vision CNNs on NPU (device=NPU); unsupported ops may fall back to CPU.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOWeightCompression": {
+            "support": "warning",
+            "olive_pass": "OpenVINOWeightCompression",
+            "note": "Weight compression is LLM-oriented; vision CNNs should prefer OpenVINOQuantization with openvinoTargetDevice=NPU.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Whisper",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/whisper",
+      "verified": true,
+      "notes": "Olive Whisper example; encoder static INT8, decoder often dynamic shapes.",
+      "hardware": {
+        "NVIDIA T4": {
+          "OnnxConversion": {
+            "support": "warning",
+            "olive_pass": "OnnxConversion",
+            "note": "Dynamic sequence length for audio; use dynamic_axes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/whisper",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "Encoder can be static INT8; decoder often needs dynamic quantization.",
+            "typical_accuracy_drop": "1-3%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxDynamicQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxDynamicQuantization",
+            "note": "Decoder-friendly; no calibration required.",
+            "typical_accuracy_drop": "1-3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "supported",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "ORT transformer fusions for Whisper encoder/decoder graphs.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU export with dynamic audio axes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/whisper",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "Calibrate encoder carefully; decoder dynamic shapes limit static INT8.",
+            "typical_accuracy_drop": "1-3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Llama 2 7B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/llama2",
+      "verified": true,
+      "notes": "Official Olive llama2 example covers conversion and GPU quant paths.",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Use dynamic_axes for variable batch/sequence; external data for large weights.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/llama2",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 is well supported on NVIDIA GPUs.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "AutoAWQQuantizer": {
+            "support": "supported",
+            "olive_pass": "AutoAWQQuantizer",
+            "note": "AutoAWQ before ONNX export; used in Olive LLM recipes.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 QDQ is usable but AWQ/TensorRT is preferred.",
+            "typical_accuracy_drop": "1-3%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "GptqQuantizer": {
+            "support": "supported",
+            "olive_pass": "GptqQuantizer",
+            "note": "GPTQ int4 alternative when AWQ calibration data is limited.",
+            "typical_accuracy_drop": "<3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 halves memory on consumer GPUs.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU inference works; static quantization possible.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quantization reduces memory but may slow generation.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OpenVINOConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOConversion",
+            "note": "OpenVINO can improve CPU throughput.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOWeightCompression": {
+            "support": "supported",
+            "olive_pass": "OpenVINOWeightCompression",
+            "note": "INT4/INT8 weight compression for 7B on CPU.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxBlockWiseRtnQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxBlockWiseRtnQuantization",
+            "note": "RTN int4 is calibration-light; validate perplexity.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNPreprocess": {
+            "support": "supported",
+            "olive_pass": "QNNPreprocess",
+            "note": "Preprocess unsupported ops before QNN quant.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "Use int4 weights and QNNPreprocess for unsupported ops.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Llama 3 8B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/olive-recipes",
+      "verified": true,
+      "notes": "Covered by Olive LLM recipes (AutoAWQ + NVModelOpt + OpenVINO weight compression).",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Use dynamic_axes and external data for large weights.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 is the recommended path for Llama 3 on NVIDIA.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "AutoAWQQuantizer": {
+            "support": "supported",
+            "olive_pass": "AutoAWQQuantizer",
+            "note": "Studio/MCP llama3_cuda_awq recipe uses AutoAWQ then OnnxConversion.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 halves memory; keep I/O types float32 for stability.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export graph optimization in Olive LLM recipes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "GptqQuantizer": {
+            "support": "supported",
+            "olive_pass": "GptqQuantizer",
+            "note": "GPTQ int4 alternative documented in Olive pass catalog.",
+            "typical_accuracy_drop": "<3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "MobiusBuilder": {
+            "support": "supported",
+            "olive_pass": "MobiusBuilder",
+            "note": "ONNX export via Mobius; produces ORT GenAI composite packages with caching support.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "KQuant": {
+            "support": "supported",
+            "olive_pass": "KQuant",
+            "note": "ggml-style K-quant weight-only quantization (2/4/8-bit); PyTorch-side before ONNX export.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxKquantQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxKquantQuantization",
+            "note": "K-quant quantization applied directly to ONNX models; ggml-style weight-only.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QuantizeEmbeddingInt8": {
+            "support": "supported",
+            "olive_pass": "QuantizeEmbeddingInt8",
+            "note": "Graph surgery for INT8 embedding quantization; reduces memory for large vocabularies.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "ShareEmbeddingLmHead": {
+            "support": "supported",
+            "olive_pass": "ShareEmbeddingLmHead",
+            "note": "Graph surgery to share embedding and LM-head weights; reduces model size.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxDiscrepancyCheck": {
+            "support": "supported",
+            "olive_pass": "OnnxDiscrepancyCheck",
+            "note": "Validation pass measuring numerical discrepancies; model passes through unchanged.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU-friendly with dynamic_axes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quant reduces footprint for edge deployment.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OpenVINOConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOConversion",
+            "note": "OpenVINO is a good CPU target for Llama 3.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOOptimumConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOOptimumConversion",
+            "note": "Optimum-based HF→OpenVINO path used in openvino_llm recipe.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOWeightCompression": {
+            "support": "supported",
+            "olive_pass": "OpenVINOWeightCompression",
+            "note": "INT4/INT8 weight compression for 8B on CPU/iGPU.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "MobiusBuilder": {
+            "support": "supported",
+            "olive_pass": "MobiusBuilder",
+            "note": "ONNX export via Mobius; produces ORT GenAI composite packages with caching.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "KQuant": {
+            "support": "supported",
+            "olive_pass": "KQuant",
+            "note": "ggml-style K-quant weight-only quantization (2/4/8-bit); PyTorch-side.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxKquantQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxKquantQuantization",
+            "note": "K-quant quantization for ONNX models; ggml-style weight-only.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QuantizeEmbeddingInt8": {
+            "support": "supported",
+            "olive_pass": "QuantizeEmbeddingInt8",
+            "note": "Graph surgery for INT8 embedding quantization; reduces memory.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "ShareEmbeddingLmHead": {
+            "support": "supported",
+            "olive_pass": "ShareEmbeddingLmHead",
+            "note": "Graph surgery to share embedding and LM-head weights.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxDiscrepancyCheck": {
+            "support": "supported",
+            "olive_pass": "OnnxDiscrepancyCheck",
+            "note": "Validation pass measuring numerical discrepancies; model passes through unchanged.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNPreprocess": {
+            "support": "supported",
+            "olive_pass": "QNNPreprocess",
+            "note": "Required before QNN quant for LLM ops.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "int4 weights with QNNPreprocess give best NPU throughput.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "QairtPipeline": {
+            "support": "supported",
+            "olive_pass": "QairtPipeline",
+            "note": "Single-pass QAIRT LLM pipeline; replaces QairtPreparation + QairtGenAIBuilder workflow.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "SimplifiedLayerNormToRMSNorm": {
+            "support": "supported",
+            "olive_pass": "SimplifiedLayerNormToRMSNorm",
+            "note": "Graph surgery converting SimplifiedLayerNorm to RMSNorm for QNN compatibility.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Qualcomm QNN ABI": {
+          "QairtPipeline": {
+            "support": "supported",
+            "olive_pass": "QairtPipeline",
+            "note": "Single-pass QAIRT LLM pipeline via QNN ABI execution provider.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "SimplifiedLayerNormToRMSNorm": {
+            "support": "supported",
+            "olive_pass": "SimplifiedLayerNormToRMSNorm",
+            "note": "Graph surgery converting SimplifiedLayerNorm to RMSNorm for QNN ABI EP.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "NVIDIA TensorRT RTX": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Consumer TRT RTX path via NvTensorRTRTXExecutionProvider; tensorrt-rtx installs the standalone TensorRT RTX EP-ABI provider library for ONNX Runtime 1.23+ (SM≥7.5; not a separate plugin dependency beyond that package). Same Olive LLM export availability as CUDA RTX 4090 path.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ INT4 recommended for Llama 3 on tensorrt-rtx; same Olive pass availability as CUDA RTX path.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "AutoAWQQuantizer": {
+            "support": "supported",
+            "olive_pass": "AutoAWQQuantizer",
+            "note": "PyTorch-side AWQ INT4 before ONNX export; preferred over PTQ INT8/QDQ for consumer TRT RTX.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export graph optimization for NvTensorRTRTXExecutionProvider deployment.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "AMD MI300X / ROCm": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export with dynamic_axes and external data; ROCMExecutionProvider path.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "GptqQuantizer": {
+            "support": "supported",
+            "olive_pass": "GptqQuantizer",
+            "note": "Preferred int4 path on ROCm (llama3_rocm_gptq recipe); AWQ support is limited.",
+            "typical_accuracy_drop": "<3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 post-export for ROCm memory bandwidth; validate NaN/Inf on target GPU.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Graph optimizer after conversion for ROCm deploy.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Phi-4",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/phi2",
+      "verified": true,
+      "notes": "Phi-4 uses the same Olive Phi/LLM quant paths; phi4_cpu_int4 recipe uses OnnxBlockWiseRtnQuantization.",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export with dynamic_axes for batch and sequence.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "NVModelOpt AWQ int4 works well for small Phi models.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 QDQ is stable on Phi-4.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is preferred GPU path for small Phi.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU export is straightforward.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quantization gives good CPU latency.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxDynamicQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxDynamicQuantization",
+            "note": "No calibration required; good for quick CPU tests.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxBlockWiseRtnQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxBlockWiseRtnQuantization",
+            "note": "phi4_cpu_int4 integration recipe path.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-quant optimizer in phi4_cpu_int4 recipe.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "Small enough for NPU int4 deployment.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "CodeLlama 7B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/llama2",
+      "verified": false,
+      "notes": "CodeLlama shares Llama architecture; claims limited to Olive Llama pass availability (conversion, AWQ, static quant) — not code-task benchmarks.",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Long context requires careful dynamic_axes; same export path as Llama 2.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/llama2",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 available for Llama-architecture models on NVIDIA.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "AutoAWQQuantizer": {
+            "support": "supported",
+            "olive_pass": "AutoAWQQuantizer",
+            "note": "AutoAWQ pass available for HF Llama-family checkpoints.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Long sequence lengths can be slow on CPU.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "Quantization may affect code-token accuracy; evaluate carefully.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "int4 weights recommended for 7B; validate ops on device.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "DeepSeek-R1-Distill-Llama 8B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+      "verified": false,
+      "notes": "Distilled Llama backbone; claims limited to Olive Llama-architecture pass availability (conversion, NVModelOpt, OpenVINO weight compression).",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Use dynamic_axes for reasoning-length outputs.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 is the best GPU path for Llama-backbone 8B.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU export works; int4 reduces memory.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOConversion",
+            "note": "OpenVINO conversion available for ONNX LLMs.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOWeightCompression": {
+            "support": "supported",
+            "olive_pass": "OpenVINOWeightCompression",
+            "note": "INT4/INT8 weight compression for low-memory CPU.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "int4 weights with QNNPreprocess.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Stable Diffusion v1.4",
+      "frameworks": [
+        "PyTorch",
+        "ONNX"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/directml/stable_diffusion",
+      "verified": true,
+      "notes": "Olive DirectML Stable Diffusion example; UNet/VAE/text encoder converted separately.",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "UNet, VAE and text encoder are converted separately.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/directml/stable_diffusion",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is the standard for SD UNet.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 UNet can cause visible artifacts; use per-channel carefully.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export optimizer in stable_diffusion_cuda_fp16 recipe.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU runs SD components; FP32 is safest.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "VAE quantization can produce artifacts; validate visually.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Windows DirectML GPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Olive DirectML stable_diffusion example converts UNet/VAE/text encoder separately for DmlExecutionProvider.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/directml/stable_diffusion",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is the standard DirectML path for SD UNet on Windows GPUs.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 UNet on DirectML can cause artifacts; validate visually like other SD INT8 paths.",
+            "typical_accuracy_drop": "3-5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export optimizer for SD components before DmlExecutionProvider; matrix-only (no dedicated SD DirectML recipe).",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "BERT-base",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/bert",
+      "verified": true,
+      "notes": "Official Olive BERT example; OrtTransformersOptimization + static INT8 is the standard CPU path.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "BERT exports cleanly to ONNX.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/bert",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "supported",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "ORT transformer fusions before static quant (bert_cpu_static recipe).",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quantization is highly stable for BERT.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxDynamicQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxDynamicQuantization",
+            "note": "No calibration required; good for quick tests.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "IncStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "IncStaticQuantization",
+            "note": "Intel Neural Compressor static INT8 alternative.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOQuantization": {
+            "support": "supported",
+            "olive_pass": "OpenVINOQuantization",
+            "note": "OpenVINO INT8 for BERT on Intel CPU/iGPU.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "BERT inference on GPU is fast in FP16.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/bert",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "supported",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "GPU transformer fusions via ORT.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 QDQ on TensorRT gives good speedup.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is the default GPU path for BERT.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "WebGPU (Browser)": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export ONNX for in-browser ORT Web WebGPU; local Olive Execute Live is blocked.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/WebGPU-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 export preferred for browser ORT Web WebGPU; not a local Execute Live target.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "warning",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "Transformer fusions with use_gpu=false for the export path; browser ORT Web applies its own runtime opts.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Optional post-export cleanup before browser WebGPU deployment.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "MobileNetV2",
+      "frameworks": [
+        "PyTorch",
+        "ONNX"
+      ],
+      "source": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+      "verified": true,
+      "notes": "Lightweight CNN; ORT static quant and QNN paths are well documented for mobile vision.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Lightweight CNN; exports cleanly.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quantization is very stable for MobileNet.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Graph cleanup after quant.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNConversion": {
+            "support": "supported",
+            "olive_pass": "QNNConversion",
+            "note": "Convert to QNN for NPU execution.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "int8 weights with per-channel symmetric quant.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "QNNPreprocess": {
+            "support": "supported",
+            "olive_pass": "QNNPreprocess",
+            "note": "Preprocess for QNN op compatibility.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core Ultra NPU (OpenVINO)": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Small CNN ideal for NPU; convert then OpenVINO with openvinoTargetDevice=NPU.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/OpenVINO-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OpenVINOConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOConversion",
+            "note": "OpenVINO IR for Core Ultra NPU; NPU driver required. Unsupported ops may CPU-fallback.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOQuantization": {
+            "support": "supported",
+            "olive_pass": "OpenVINOQuantization",
+            "note": "INT8 for MobileNetV2 on NPU (device=NPU); lightweight CNN is a strong NPU fit; unsupported ops may CPU-fallback.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Raspberry Pi 5 (CPU)": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "ARM CPU export; fixed input shape preferred.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 reduces latency on ARM Cortex-A76.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "EfficientNet-B0",
+      "frameworks": [
+        "PyTorch",
+        "ONNX"
+      ],
+      "source": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+      "verified": false,
+      "notes": "CNN quant path via ORT static/QDQ and OpenVINO; SiLU activations may need careful calibration.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Compound scaling is ONNX-friendly.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 quantization stable for EfficientNet with good calibration.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "NVIDIA T4": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "FP16 TensorRT gives good throughput.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 may need careful calibration due to SiLU activations.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 preferred when INT8 calibration is unstable.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Intel Arc A770": {
+          "OpenVINOConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOConversion",
+            "note": "OpenVINO is a strong CPU/iGPU target.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/OpenVINO-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OpenVINOQuantization": {
+            "support": "supported",
+            "olive_pass": "OpenVINOQuantization",
+            "note": "INT8 on Arc A770 is efficient.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "ViT-base",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+      "verified": true,
+      "notes": "Vision Transformer; ORT transformer optimization + static INT8 for patch embeddings/MLP.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Vision Transformer exports with dynamic batch/sequence axes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "supported",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "ORT fusions apply to ViT attention blocks.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quantization works for patch embeddings and MLP.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "FP16 TensorRT is the fastest path.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 attention may need per-channel weights.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 preferred for ViT on GPU.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "T5-small",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+      "verified": false,
+      "notes": "Encoder-decoder; ORT transformer optimization documented for T5-class models.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Encoder-decoder export requires separate attention caches.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "supported",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "ORT fusions for encoder/decoder graphs.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "Decoder dynamic shapes can limit INT8 accuracy; calibrate carefully.",
+            "typical_accuracy_drop": "1-3%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Use dynamic_axes for encoder and decoder.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 QDQ works well for T5 encoder.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 for GPU encoder/decoder.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "GPT-2",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+      "verified": true,
+      "notes": "Small decoder LM; ORT transformer optimization and static INT8 are standard.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Small GPT-2 exports cleanly; use dynamic_axes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "supported",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "ORT GPT-2 fusions are well documented.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quantization is stable for GPT-2.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxDynamicQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxDynamicQuantization",
+            "note": "Dynamic quant suits decoder generation without calibration.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "FP16 TensorRT gives good speedup for small decoder.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 is overkill for GPT-2 but the pass is available.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 is the practical GPU path for GPT-2.",
+            "typical_accuracy_drop": "<0.5%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Falcon 7B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+      "verified": false,
+      "notes": "Claims limited to Olive pass availability for HF decoder LLMs (conversion, NVModelOpt, OpenVINO, RTN).",
+      "hardware": {
+        "NVIDIA A100": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Use external data format and dynamic_axes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 is recommended on A100 for 7B decoders.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "GptqQuantizer": {
+            "support": "supported",
+            "olive_pass": "GptqQuantizer",
+            "note": "GPTQ int4 alternative for Falcon-class HF models.",
+            "typical_accuracy_drop": "<3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU export works; int4 reduces memory.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxBlockWiseRtnQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxBlockWiseRtnQuantization",
+            "note": "RTN int4 is fast but may drop perplexity; validate.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "Intel Arc A770": {
+          "OpenVINOOptimumConversion": {
+            "support": "supported",
+            "olive_pass": "OpenVINOOptimumConversion",
+            "note": "OpenVINO optimum conversion for HF decoder LLMs.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OpenVINOWeightCompression": {
+            "support": "supported",
+            "olive_pass": "OpenVINOWeightCompression",
+            "note": "INT4/INT8 weight compression for low-memory iGPU.",
+            "typical_accuracy_drop": "2-4%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "YOLOv8",
+      "frameworks": [
+        "PyTorch",
+        "ONNX"
+      ],
+      "source": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+      "verified": false,
+      "notes": "Detection CNN; Ultralytics ONNX export + Olive OnnxConversion/static quant/QNN paths.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "YOLOv8 exports via Ultralytics export path then Olive conversion/load.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 works well for detection heads with representative calib.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-quant graph cleanup.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "NVIDIA Jetson Orin": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Export with batch=1 and dynamic input shape.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "warning",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 may reduce mAP; verify on representative dataset.",
+            "typical_accuracy_drop": "1-3%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 TensorRT is the safer Jetson path when mAP is critical.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Qualcomm Snapdragon NPU": {
+          "QNNConversion": {
+            "support": "supported",
+            "olive_pass": "QNNConversion",
+            "note": "Convert to QNN with fixed input resolution.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "QNNQuantization": {
+            "support": "supported",
+            "olive_pass": "QNNQuantization",
+            "note": "int8 weights for NPU execution.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Mixtral 8x7B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+      "verified": false,
+      "notes": "Sparse MoE; routing/export may need custom handling. Quant claims limited to Olive NVModelOpt/GPTQ pass availability for large HF LLMs — not MoE-specific benchmarks.",
+      "hardware": {
+        "NVIDIA A100": {
+          "OnnxConversion": {
+            "support": "warning",
+            "olive_pass": "OnnxConversion",
+            "note": "MoE routing ops may need custom handling; test with representative inputs.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 recommended; expert weights are large.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "warning",
+            "olive_pass": "OnnxConversion",
+            "note": "VRAM constrained for 8x7B; use external data format.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "int4 AWQ reduces memory to fit on consumer GPUs.",
+            "typical_accuracy_drop": "<3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "AMD MI300X / ROCm": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "ROCm EP supports large models; use external data format.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "GptqQuantizer": {
+            "support": "supported",
+            "olive_pass": "GptqQuantizer",
+            "note": "GPTQ int4 pass available in Olive for HF LLMs on ROCm hosts.",
+            "typical_accuracy_drop": "<3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 halves weight bandwidth on MI300X; keep I/O float32 when needed.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxModelOptimizer": {
+            "support": "supported",
+            "olive_pass": "OnnxModelOptimizer",
+            "note": "Post-export graph optimization before ROCMExecutionProvider deploy.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "AutoAWQQuantizer": {
+            "support": "warning",
+            "olive_pass": "AutoAWQQuantizer",
+            "note": "AWQ has limited ROCm support; prefer GptqQuantizer on AMD ROCm hosts.",
+            "typical_accuracy_drop": "varies",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Azure OpenAI Whisper",
+      "frameworks": [
+        "ONNX"
+      ],
+      "source": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+      "verified": false,
+      "notes": "Cloud endpoint reference; local ONNX export for Whisper follows the Whisper entry. AzureMLQuantization is the Olive cloud quant pass.",
+      "hardware": {
+        "Azure ML N-series": {
+          "AzureMLQuantization": {
+            "support": "supported",
+            "olive_pass": "AzureMLQuantization",
+            "note": "AzureML quantization pipeline for cloud ONNX Runtime.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxQuantization",
+            "note": "Standard ORT quant also available on Azure ML N-series VMs.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "Phi-2",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples/phi2",
+      "verified": true,
+      "notes": "Official Olive phi2 example.",
+      "hardware": {
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "Phi-2 Olive example export path.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/phi2",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "NVModelOptQuantization": {
+            "support": "supported",
+            "olive_pass": "NVModelOptQuantization",
+            "note": "AWQ int4 via NVModelOpt for Phi-2.",
+            "typical_accuracy_drop": "<2%",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/phi2",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 GPU path for small Phi.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        },
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "CPU export from Olive phi2 example patterns.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://github.com/microsoft/Olive/tree/main/examples/phi2",
+              "type": "github",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quant for Phi-2 on CPU.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxBlockWiseRtnQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxBlockWiseRtnQuantization",
+            "note": "INT4 RTN for low-memory CPU.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/options.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "model": "OPT-1.3B",
+      "frameworks": [
+        "PyTorch",
+        "ONNX",
+        "HuggingFace"
+      ],
+      "source": "https://github.com/microsoft/Olive/tree/main/examples",
+      "verified": false,
+      "notes": "HF decoder LM; claims limited to Olive conversion + ORT quant/transformer optimization availability.",
+      "hardware": {
+        "Intel Core i9 CPU": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "HF OPT exports via OnnxConversion.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OrtTransformersOptimization": {
+            "support": "supported",
+            "olive_pass": "OrtTransformersOptimization",
+            "note": "ORT transformer fusions for OPT-class decoders.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/transformers-optimization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxStaticQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxStaticQuantization",
+            "note": "INT8 static quant with calibration.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxDynamicQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxDynamicQuantization",
+            "note": "No calibration; good for quick CPU tests.",
+            "typical_accuracy_drop": "1-3%",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          }
+        },
+        "NVIDIA RTX 4090": {
+          "OnnxConversion": {
+            "support": "supported",
+            "olive_pass": "OnnxConversion",
+            "note": "GPU export with dynamic_axes.",
+            "typical_accuracy_drop": "n/a",
+            "evidence": {
+              "reference": "https://microsoft.github.io/Olive/0.13.0/reference/pass.html",
+              "type": "olive_docs",
+              "version": "0.13.0"
+            }
+          },
+          "OnnxFloatToFloat16": {
+            "support": "supported",
+            "olive_pass": "OnnxFloatToFloat16",
+            "note": "FP16 for 1.3B on consumer GPU.",
+            "typical_accuracy_drop": "<1%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/float16.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          },
+          "OnnxQuantization": {
+            "support": "supported",
+            "olive_pass": "OnnxQuantization",
+            "note": "INT8 QDQ available for OPT-class models.",
+            "typical_accuracy_drop": "1-2%",
+            "evidence": {
+              "reference": "https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html",
+              "type": "ort_docs",
+              "version": "1.19"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

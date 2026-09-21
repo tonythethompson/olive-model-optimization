@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+olive_mcp_server/knowledge_base/update_report.json
+olive_mcp_server/knowledge_base/candidate_quirks.json
