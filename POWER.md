@@ -43,7 +43,7 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 ### Pass Catalog & Configuration
 
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_olive_passes` | List all 92+ optimization passes with optional filtering by type, hardware, format |
 | `get_pass_config_template` | Generate a pass configuration JSON template for a specific pass type |
 | `get_pass_parameters` | Detailed parameter documentation for a pass (types, defaults, constraints) |
@@ -52,7 +52,7 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 ### Strategy & Recommendations
 
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_quantization_strategy` | Recommend quantization approach given model, hardware, and accuracy needs |
 | `get_hardware_optimization_guide` | Hardware-specific optimization guidance for an execution provider |
 | `evaluate_optimization_tradeoff` | Compare tradeoffs between different optimization approaches |
@@ -61,7 +61,7 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 ### Troubleshooting & Diagnostics
 
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `troubleshoot_olive_error` | Diagnose an Olive error against the knowledge base |
 | `diagnose_error` | Generic error diagnosis (broader than Olive-specific) |
 | `get_error_frequency_summary` | Error pattern tracking and frequency stats |
@@ -70,7 +70,7 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 ### Compatibility & Validation
 
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_model_compatibility` | Check model × pass × hardware compatibility |
 | `validate_ui_state_recipe` | Validate a Studio UIState JSON against recipe rules |
 | `get_recipe_for_ui_state` | Generate complete Olive recipe JSON from a UIState |
@@ -79,7 +79,7 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 ### Documentation & Reference
 
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `search_olive_documentation` | Semantic search across Olive documentation (uses embeddings) |
 | `get_cli_command` | Generate Olive CLI commands for a given workflow |
 | `get_data_config_template` | Data configuration templates for calibration/evaluation |
@@ -89,7 +89,7 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 ### Job Lifecycle (Studio Integration)
 
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `list_optimization_jobs` | List active and past optimization jobs |
 | `get_optimization_job` | Get details for a specific job |
 | `get_optimization_results` | Get results/metrics from a completed job |
@@ -131,20 +131,23 @@ The `mcp` package MUST be pinned `<2` — version 2.x breaks imports.
 ### Common Issues
 
 **Error: "No project .venv found"**
+
 - Create the virtual environment: `python -m venv olive-mcp-server/.venv && pip install -e ".[dev]" "mcp<2"`
 
 **Error: "OLIVE_STUDIO_API_URL is not set"**
+
 - Start Olive Studio (`pnpm dev` or `pnpm start`)
 - Set `OLIVE_STUDIO_API_URL` to loopback: `http://127.0.0.1:3000`
 
 **Semantic search is slow on first call**
+
 - This is expected — the embedding model loads at runtime
 - Set `OLIVE_MCP_PRELOAD_EMBEDDINGS=1` to load at server start
 
 ### Environment Variables
 
 | Variable | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | `OLIVE_MCP_RETRIEVAL_MODE` | `auto` (default), `keyword`, or `semantic` |
 | `OLIVE_MCP_SEMANTIC_BUDGET_MS` | Cold semantic budget (default 8000; 0 = unlimited) |
 | `OLIVE_MCP_PRELOAD_EMBEDDINGS` | If `1`, warm model + indexes at startup |
@@ -170,6 +173,40 @@ The MCP server is configured in `~/.kiro/powers.mcp.json`:
 }
 ```
 
-## License
+## MCP Config Placeholders
 
-MIT
+**IMPORTANT:** Before using this power, replace the following placeholders in `mcp.json` with your actual values:
+
+- **`d:/Dev/olive-mcp-powers/olive-mcp-server`**: The absolute path to your olive-mcp-server directory.
+  - **How to set it:**
+    1. Locate your olive-mcp-powers workspace directory
+    2. The server is located at `olive-mcp-server` subdirectory
+    3. Use the full absolute path (e.g., `C:/Users/yourname/projects/olive-mcp-powers/olive-mcp-server`)
+
+**After replacing placeholders, your mcp.json should look like:**
+
+```json
+{
+  "mcpServers": {
+    "olive-mcp": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["run.py"],
+      "cwd": "C:/Users/yourname/projects/olive-mcp-powers/olive-mcp-server",
+      "env": {
+        "OLIVE_MCP_RETRIEVAL_MODE": "auto",
+        "PYTHONPATH": "C:/Users/yourname/projects/olive-mcp-powers/olive-mcp-server"
+      },
+      "disabled": false,
+      "disabledTools": []
+    }
+  }
+}
+```
+
+**Note:** For local development, the current configuration uses `d:/Dev/olive-mcp-powers/olive-mcp-server` which works for the development environment. When sharing this power, users should replace with their actual path.
+
+---
+
+**Package:** `olive-mcp-server`
+**MCP Server:** `olive-mcp`
