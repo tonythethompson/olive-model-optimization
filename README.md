@@ -1,4 +1,4 @@
-# Olive MCP Tools
+# Olive Model Optimization
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that helps AI agents query, configure, and troubleshoot Microsoft Olive model optimization workflows.
 
